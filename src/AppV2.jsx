@@ -15,22 +15,22 @@ export default function AppV2() {
   const [contraceptiveUrgency, setContraceptiveUrgency] = useState('')
   const [pregnancyTestStatus, setPregnancyTestStatus] = useState('')
 
-  // --- NEW FILTER STATES FOR SCREEN 4 ---
-  const [deliveryFilter, setDeliveryFilter] = useState('all') // 'all', 'mail', 'in-person'
-  const [insuranceFilter, setInsuranceFilter] = useState('all') // 'all', 'insurance', 'free-cash'
+  // Filter States for Screen 4
+  const [deliveryFilter, setDeliveryFilter] = useState('all') 
+  const [insuranceFilter, setInsuranceFilter] = useState('all') 
 
   const usStates = [
-  'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 
-  'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia', 
-  'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 
-  'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 
-  'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri', 
-  'Montana', 'Nebraska', 'Nevative', 'New Hampshire', 'New Jersey', 
-  'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio', 
-  'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 
-  'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont', 
-  'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'
-]
+    'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 
+    'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia', 
+    'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 
+    'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 
+    'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri', 
+    'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey', 
+    'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio', 
+    'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 
+    'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont', 
+    'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'
+  ]
   
   const services = [
     { id: 'abortion', name: 'I want an abortion', icon: '💊', subtitle: 'Explore safe, private medical and legal pathways.' },
@@ -39,6 +39,7 @@ export default function AppV2() {
     { id: 'pregnancy', name: 'I want to test for pregnancy', icon: '🩺', subtitle: 'Get confidential, highly accurate test options.' }
   ]
 
+  // Handles stepping backward safely
   const handleGoBack = () => {
     if (screen === 4) {
       setScreen(3)
@@ -50,11 +51,27 @@ export default function AppV2() {
     }
   }
 
-  // Updated Recommendation Database with metadata tags for real-time filtering
+  // Google Analytics Event Logger
+  const logToGoogleAnalytics = (finalAge, finalState, finalService) => {
+    let ageRange = 'Under 15'
+    const numericAge = Number(finalAge)
+    if (numericAge >= 15 && numericAge <= 17) ageRange = '15-17'
+    else if (numericAge >= 18 && numericAge <= 21) ageRange = '18-21'
+    else if (numericAge > 21) ageRange = '22+'
+
+    if (typeof window.gtag !== 'undefined') {
+      window.gtag('event', 'resource_search', {
+        'user_state': finalState,
+        'user_age_group': ageRange,
+        'service_type': finalService,
+      });
+    }
+  }
+
+  // Dynamic Recommendation Logic
   const getRecommendations = () => {
     let list = []
     
-    // 1. ABORTION PATH
     if (selectedService === 'abortion') {
       list.push({
         name: '🔑 I Need an A (ineedana.com)',
@@ -83,7 +100,6 @@ export default function AppV2() {
       }
     }
 
-    // 2. STI TESTING PATH
     if (selectedService === 'testing') {
       if (hasStiSymptoms === 'yes') {
         list.push({
@@ -104,7 +120,6 @@ export default function AppV2() {
       }
     }
 
-    // 3. CONTRACEPTIVE PATH
     if (selectedService === 'contraceptive') {
       if (contraceptiveUrgency === 'emergency') {
         list.push({
@@ -124,7 +139,6 @@ export default function AppV2() {
       })
     }
 
-    // 4. PREGNANCY TESTING PATH
     if (selectedService === 'pregnancy') {
       if (pregnancyTestStatus === 'need-test') {
         list.push({
@@ -145,7 +159,6 @@ export default function AppV2() {
       }
     }
 
-    // GENERAL RESOURCE (Always shown, fits all categories)
     list.push({
       name: '💬 Scarleteen (scarleteen.com)',
       desc: 'The ultimate, non-judgmental guide to sex, bodies, and relationships built entirely for teenagers and young adults.',
@@ -154,7 +167,6 @@ export default function AppV2() {
       cost: 'all'
     })
 
-    // --- APPLY FILTERS LIVE ---
     return list.filter(item => {
       const matchesDelivery = deliveryFilter === 'all' || item.type === 'all' || item.type === deliveryFilter;
       const matchesCost = insuranceFilter === 'all' || item.cost === 'all' || item.cost === insuranceFilter;
@@ -204,7 +216,7 @@ export default function AppV2() {
         </div>
       </div>
 
-      {/* --- SCREEN 1: DEMOGRAPHICS --- */}
+      {/* --- SCREEN 1: DEMOGRAPHICS FIRST --- */}
       {screen === 1 && (
         <div className="max-w-md mx-auto bg-white p-8 rounded-2xl border border-slate-100 shadow-sm text-center">
           <div className="text-4xl mb-4">👋</div>
@@ -244,7 +256,7 @@ export default function AppV2() {
         </div>
       )}
 
-      {/* --- SCREEN 2: SERVICE MATRIX --- */}
+      {/* --- SCREEN 2: CHOOSE SERVICE SECOND --- */}
       {screen === 2 && (
         <div className="max-w-3xl mx-auto">
           <div className="bg-slate-50 border border-slate-100 p-3 rounded-xl flex items-center justify-between text-xs font-semibold text-slate-600 mb-8">
@@ -252,6 +264,7 @@ export default function AppV2() {
               <span>📍 {stateLocation}</span>
               <span>⏳ Age: {age}</span>
             </div>
+            <button type="button" onClick={() => setScreen(1)} className="text-purple-700 hover:underline font-bold cursor-pointer">Change details</button>
           </div>
 
           <h2 className="text-3xl font-black text-slate-900 tracking-tight text-center mb-10">
@@ -317,18 +330,42 @@ export default function AppV2() {
                 <label className="block text-sm font-bold text-slate-700">How many weeks has it been since your last period?</label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
                   {[
-                    { value: 'under10', label: 'Under 10 Weeks (Pills option)' },
+                    { value: 'under10', label: 'Under 10 Weeks' },
                     { value: '10to15', label: '10 to 15 Weeks' },
                     { value: 'over15', label: 'Over 15 Weeks' }
                   ].map(opt => (
                     <button
-                      key={opt.value} type="button" onClick={() => setWeeksPregnant(opt.value)}
-                      className={`p-3 text-xs font-bold rounded-xl border text-center transition-all cursor-pointer ${weeksPregnant === opt.value ? 'border-purple-600 bg-purple-50 text-purple-700' : 'border-slate-200 bg-slate-50 text-slate-600'}`}
+                      key={opt.value} 
+                      type="button" 
+                      onClick={() => {
+                        setWeeksPregnant(opt.value);
+                        // AUTOMATIC TRIAGE SYSTEM: Updates delivery filters instantly based on medical access windows
+                        if (opt.value === 'under10') {
+                          setDeliveryFilter('mail');
+                        } else {
+                          setDeliveryFilter('in-person');
+                        }
+                      }}
+                      className={`p-3 text-xs font-bold rounded-xl border text-center transition-all cursor-pointer ${weeksPregnant === opt.value ? 'border-purple-600 bg-purple-50 text-purple-700 ring-1 ring-purple-600' : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
                     >
                       {opt.label}
                     </button>
                   ))}
                 </div>
+
+                {/* DYNAMIC SMART POLICY MESSAGES */}
+                {weeksPregnant === 'under10' && (
+                  <div className="p-4 bg-purple-50/60 border border-purple-100 rounded-xl text-xs text-purple-950 animate-fade-in leading-relaxed">
+                    <span className="font-bold block mb-0.5">📦 Automated Pill Customization:</span>
+                    Since you are under 10 weeks, you are eligible for medication options (abortion pills). We have pre-set your upcoming results to **By Mail** to show delivery services. You are completely free to switch back to clinic options later if you prefer!
+                  </div>
+                )}
+                {(weeksPregnant === '10to15' || weeksPregnant === 'over15') && (
+                  <div className="p-4 bg-amber-50/60 border border-amber-100 rounded-xl text-xs text-amber-950 animate-fade-in leading-relaxed">
+                    <span className="font-bold block mb-0.5">🏥 Automated Clinic Customization:</span>
+                    At this stage, care is typically provided in-person at verified clinics. We have updated your filters to **In Person** options below to point you toward safe brick-and-mortar facilities.
+                  </div>
+                )}
               </div>
             )}
 
@@ -342,7 +379,7 @@ export default function AppV2() {
                   ].map(opt => (
                     <button
                       key={opt.value} type="button" onClick={() => setHasStiSymptoms(opt.value)}
-                      className={`flex-1 p-4 text-xs font-bold rounded-xl border text-center transition-all cursor-pointer ${hasStiSymptoms === opt.value ? 'border-purple-600 bg-purple-50 text-purple-700' : 'border-slate-200 bg-slate-50 text-slate-600'}`}
+                      className={`flex-1 p-4 text-xs font-bold rounded-xl border text-center transition-all cursor-pointer ${hasStiSymptoms === opt.value ? 'border-purple-600 bg-purple-50 text-purple-700 ring-1 ring-purple-600' : 'border-slate-200 bg-slate-50 text-slate-600'}`}
                     >
                       {opt.label}
                     </button>
@@ -361,7 +398,7 @@ export default function AppV2() {
                   ].map(opt => (
                     <button
                       key={opt.value} type="button" onClick={() => setContraceptiveUrgency(opt.value)}
-                      className={`p-4 text-xs font-bold rounded-xl border text-left transition-all cursor-pointer ${contraceptiveUrgency === opt.value ? 'border-purple-600 bg-purple-50 text-purple-700' : 'border-slate-200 bg-slate-50 text-slate-600'}`}
+                      className={`p-4 text-xs font-bold rounded-xl border text-left transition-all cursor-pointer ${contraceptiveUrgency === opt.value ? 'border-purple-600 bg-purple-50 text-purple-700 ring-1 ring-purple-600' : 'border-slate-200 bg-slate-50 text-slate-600'}`}
                     >
                       {opt.label}
                     </button>
@@ -383,7 +420,7 @@ export default function AppV2() {
                   ].map(opt => (
                     <button
                       key={opt.value} type="button" onClick={() => setPregnancyTestStatus(opt.value)}
-                      className={`p-4 text-xs font-bold rounded-xl border text-left transition-all cursor-pointer ${pregnancyTestStatus === opt.value ? 'border-purple-600 bg-purple-50 text-purple-700' : 'border-slate-200 bg-slate-50 text-slate-600'}`}
+                      className={`p-4 text-xs font-bold rounded-xl border text-left transition-all cursor-pointer ${pregnancyTestStatus === opt.value ? 'border-purple-600 bg-purple-50 text-purple-700 ring-1 ring-purple-600' : 'border-slate-200 bg-slate-50 text-slate-600'}`}
                     >
                       {opt.label}
                     </button>
@@ -401,7 +438,11 @@ export default function AppV2() {
               ← Go Back
             </button>
             <button
-              type="button" onClick={() => setScreen(4)}
+              type="button" 
+              onClick={() => {
+                logToGoogleAnalytics(age, stateLocation, selectedService);
+                setScreen(4);
+              }}
               className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 px-8 rounded-xl shadow-md transition-all text-sm cursor-pointer"
             >
               Show My Safe Options ➔
@@ -410,7 +451,7 @@ export default function AppV2() {
         </div>
       )}
 
-      {/* --- SCREEN 4: LIVE FILTERABLE ECOSYSTEM (UX UPGRADE) --- */}
+      {/* --- SCREEN 4: FILTERABLE ECOSYSTEM RESULTS --- */}
       {screen === 4 && (
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-8">
@@ -419,10 +460,8 @@ export default function AppV2() {
             <p className="text-sm text-slate-500 mt-1">Based safely on a {age}-year-old profile inside {stateLocation}.</p>
           </div>
 
-          {/* --- LIVE INTERACTIVE FILTER HUB ROW --- */}
+          {/* Interactive Filter Hub Row */}
           <div className="bg-slate-50 border border-slate-100 p-5 rounded-2xl mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            
-            {/* Filter Group A: How you get care */}
             <div className="space-y-1.5 w-full sm:w-auto">
               <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">How to get care:</span>
               <div className="flex gap-1 bg-slate-200/60 p-1 rounded-xl">
@@ -441,7 +480,6 @@ export default function AppV2() {
               </div>
             </div>
 
-            {/* Filter Group B: Costs & Insurance */}
             <div className="space-y-1.5 w-full sm:w-auto">
               <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Payment setup:</span>
               <div className="flex gap-1 bg-slate-200/60 p-1 rounded-xl">
@@ -459,10 +497,9 @@ export default function AppV2() {
                 ))}
               </div>
             </div>
-
           </div>
 
-          {/* Render Active Cards List */}
+          {/* Cards Stack Rendering */}
           <div className="space-y-4">
             {getRecommendations().length > 0 ? (
               getRecommendations().map((rec, index) => (
@@ -470,7 +507,6 @@ export default function AppV2() {
                   <div className="max-w-md">
                     <div className="flex items-center gap-2 mb-1.5">
                       <h3 className="font-bold text-lg text-slate-900 m-0">{rec.name}</h3>
-                      {/* Meta pills to show the active tags directly */}
                       <span className="text-[10px] bg-slate-100 border border-slate-200/60 font-semibold px-2 py-0.5 rounded-full text-slate-500 uppercase tracking-wide">
                         {rec.type === 'mail' ? '📦 Mail' : rec.type === 'in-person' ? '🏥 Clinic' : '🌐 Info'}
                       </span>
@@ -486,7 +522,6 @@ export default function AppV2() {
                 </div>
               ))
             ) : (
-              // Empty State Handling if they filter everything out
               <div className="text-center p-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
                 <span className="text-2xl">🔍</span>
                 <h4 className="font-bold text-slate-700 mt-2">No matching resources found</h4>

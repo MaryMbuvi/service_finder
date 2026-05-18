@@ -20,17 +20,17 @@ export default function AppV1() {
   const [insuranceFilter, setInsuranceFilter] = useState('all') 
 
   const usStates = [
-  'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 
-  'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia', 
-  'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 
-  'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 
-  'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri', 
-  'Montana', 'Nebraska', 'Nevative', 'New Hampshire', 'New Jersey', 
-  'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio', 
-  'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 
-  'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont', 
-  'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'
-]
+    'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 
+    'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia', 
+    'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 
+    'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 
+    'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri', 
+    'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey', 
+    'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio', 
+    'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 
+    'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont', 
+    'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'
+  ]
   
   const services = [
     { id: 'abortion', name: 'I want an abortion', icon: '💊', subtitle: 'Explore safe, private medical and legal pathways.' },
@@ -47,6 +47,23 @@ export default function AppV1() {
       setScreen(2)
     } else if (screen === 2) {
       setScreen(1)
+    }
+  }
+
+  // Google Analytics Event Logger
+  const logToGoogleAnalytics = (finalAge, finalState, finalService) => {
+    let ageRange = 'Under 15'
+    const numericAge = Number(finalAge)
+    if (numericAge >= 15 && numericAge <= 17) ageRange = '15-17'
+    else if (numericAge >= 18 && numericAge <= 21) ageRange = '18-21'
+    else if (numericAge > 21) ageRange = '22+'
+
+    if (typeof window.gtag !== 'undefined') {
+      window.gtag('event', 'resource_search', {
+        'user_state': finalState,
+        'user_age_group': ageRange,
+        'service_type': finalService,
+      });
     }
   }
 
@@ -275,7 +292,6 @@ export default function AppV1() {
               </select>
             </div>
 
-            {/* BASE NAVIGATION BUTTON CONTAINER */}
             <div className="flex items-center justify-center gap-4 mt-8 pt-4 border-t border-slate-100">
               <button 
                 type="button" onClick={handleGoBack}
@@ -307,18 +323,42 @@ export default function AppV1() {
                 <label className="block text-sm font-bold text-slate-700">How many weeks has it been since your last period?</label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
                   {[
-                    { value: 'under10', label: 'Under 10 Weeks (Pills option)' },
+                    { value: 'under10', label: 'Under 10 Weeks' },
                     { value: '10to15', label: '10 to 15 Weeks' },
                     { value: 'over15', label: 'Over 15 Weeks' }
                   ].map(opt => (
                     <button
-                      key={opt.value} type="button" onClick={() => setWeeksPregnant(opt.value)}
-                      className={`p-3 text-xs font-bold rounded-xl border text-center transition-all cursor-pointer ${weeksPregnant === opt.value ? 'border-purple-600 bg-purple-50 text-purple-700' : 'border-slate-200 bg-slate-50 text-slate-600'}`}
+                      key={opt.value} 
+                      type="button" 
+                      onClick={() => {
+                        setWeeksPregnant(opt.value);
+                        // AUTOMATIC TRIAGE SYSTEM: Updates delivery filters instantly based on medical access windows
+                        if (opt.value === 'under10') {
+                          setDeliveryFilter('mail');
+                        } else {
+                          setDeliveryFilter('in-person');
+                        }
+                      }}
+                      className={`p-3 text-xs font-bold rounded-xl border text-center transition-all cursor-pointer ${weeksPregnant === opt.value ? 'border-purple-600 bg-purple-50 text-purple-700 ring-1 ring-purple-600' : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
                     >
                       {opt.label}
                     </button>
                   ))}
                 </div>
+
+                {/* DYNAMIC SMART POLICY MESSAGES */}
+                {weeksPregnant === 'under10' && (
+                  <div className="p-4 bg-purple-50/60 border border-purple-100 rounded-xl text-xs text-purple-950 animate-fade-in leading-relaxed">
+                    <span className="font-bold block mb-0.5">📦 Automated Pill Customization:</span>
+                    Since you are under 10 weeks, you are eligible for medication options (abortion pills). We have pre-set your upcoming results to **By Mail** to show delivery services. You are completely free to switch back to clinic options later if you prefer!
+                  </div>
+                )}
+                {(weeksPregnant === '10to15' || weeksPregnant === 'over15') && (
+                  <div className="p-4 bg-amber-50/60 border border-amber-100 rounded-xl text-xs text-amber-950 animate-fade-in leading-relaxed">
+                    <span className="font-bold block mb-0.5">🏥 Automated Clinic Customization:</span>
+                    At this stage, care is typically provided in-person at verified clinics. We have updated your filters to **In Person** options below to point you toward safe brick-and-mortar facilities.
+                  </div>
+                )}
               </div>
             )}
 
@@ -332,7 +372,7 @@ export default function AppV1() {
                   ].map(opt => (
                     <button
                       key={opt.value} type="button" onClick={() => setHasStiSymptoms(opt.value)}
-                      className={`flex-1 p-4 text-xs font-bold rounded-xl border text-center transition-all cursor-pointer ${hasStiSymptoms === opt.value ? 'border-purple-600 bg-purple-50 text-purple-700' : 'border-slate-200 bg-slate-50 text-slate-600'}`}
+                      className={`flex-1 p-4 text-xs font-bold rounded-xl border text-center transition-all cursor-pointer ${hasStiSymptoms === opt.value ? 'border-purple-600 bg-purple-50 text-purple-700 ring-1 ring-purple-600' : 'border-slate-200 bg-slate-50 text-slate-600'}`}
                     >
                       {opt.label}
                     </button>
@@ -351,7 +391,7 @@ export default function AppV1() {
                   ].map(opt => (
                     <button
                       key={opt.value} type="button" onClick={() => setContraceptiveUrgency(opt.value)}
-                      className={`p-4 text-xs font-bold rounded-xl border text-left transition-all cursor-pointer ${contraceptiveUrgency === opt.value ? 'border-purple-600 bg-purple-50 text-purple-700' : 'border-slate-200 bg-slate-50 text-slate-600'}`}
+                      className={`p-4 text-xs font-bold rounded-xl border text-left transition-all cursor-pointer ${contraceptiveUrgency === opt.value ? 'border-purple-600 bg-purple-50 text-purple-700 ring-1 ring-purple-600' : 'border-slate-200 bg-slate-50 text-slate-600'}`}
                     >
                       {opt.label}
                     </button>
@@ -373,7 +413,7 @@ export default function AppV1() {
                   ].map(opt => (
                     <button
                       key={opt.value} type="button" onClick={() => setPregnancyTestStatus(opt.value)}
-                      className={`p-4 text-xs font-bold rounded-xl border text-left transition-all cursor-pointer ${pregnancyTestStatus === opt.value ? 'border-purple-600 bg-purple-50 text-purple-700' : 'border-slate-200 bg-slate-50 text-slate-600'}`}
+                      className={`p-4 text-xs font-bold rounded-xl border text-left transition-all cursor-pointer ${pregnancyTestStatus === opt.value ? 'border-purple-600 bg-purple-50 text-purple-700 ring-1 ring-purple-600' : 'border-slate-200 bg-slate-50 text-slate-600'}`}
                     >
                       {opt.label}
                     </button>
@@ -391,7 +431,11 @@ export default function AppV1() {
               ← Go Back
             </button>
             <button
-              type="button" onClick={() => setScreen(4)}
+              type="button" 
+              onClick={() => {
+                logToGoogleAnalytics(age, stateLocation, selectedService);
+                setScreen(4);
+              }}
               className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 px-8 rounded-xl shadow-md transition-all text-sm cursor-pointer"
             >
               Show My Safe Options ➔
