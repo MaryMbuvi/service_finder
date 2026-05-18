@@ -19,7 +19,18 @@ export default function AppV2() {
   const [deliveryFilter, setDeliveryFilter] = useState('all') // 'all', 'mail', 'in-person'
   const [insuranceFilter, setInsuranceFilter] = useState('all') // 'all', 'insurance', 'free-cash'
 
-  const usStates = ['California', 'New York', 'Texas', 'Florida', 'Illinois', 'Ohio']
+  const usStates = [
+  'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 
+  'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia', 
+  'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 
+  'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 
+  'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri', 
+  'Montana', 'Nebraska', 'Nevative', 'New Hampshire', 'New Jersey', 
+  'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio', 
+  'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 
+  'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont', 
+  'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'
+]
   
   const services = [
     { id: 'abortion', name: 'I want an abortion', icon: '💊', subtitle: 'Explore safe, private medical and legal pathways.' },
