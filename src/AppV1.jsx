@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { masterResources } from './data/resources.js' // Core website catalog
 
 export default function AppV1() {
   // Screens: 1=Service Selection (First!), 2=Demographics, 3=Deep Questions, 4=Your Safe Options
   const [screen, setScreen] = useState(1)
 
-  // User details
+  // User Core Context States
   const [age, setAge] = useState('')
   const [stateLocation, setStateLocation] = useState('')
   const [selectedService, setSelectedService] = useState('')
@@ -15,9 +16,64 @@ export default function AppV1() {
   const [contraceptiveUrgency, setContraceptiveUrgency] = useState('')
   const [pregnancyTestStatus, setPregnancyTestStatus] = useState('')
 
-  // Filter States for Screen 4
+  // Interactive UI Filter Controls
   const [deliveryFilter, setDeliveryFilter] = useState('all') 
   const [insuranceFilter, setInsuranceFilter] = useState('all') 
+
+  // Live Cloud Spreadsheet Rules Mapping Object
+  const [statePolicyRules, setStatePolicyRules] = useState({})
+  
+  // 🌟 REPLACE "YOUR_GID_NUMBER_HERE" WITH YOUR ACTUAL TAB ID (e.g., 0)
+
+  // 🚀 THE CORRECT LINK FROM YOUR PUBLISHED ID:
+  const SPREADSHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQuniRrxCGELPePf7UCxyuwNKRSnVTCQbOYH4jeVL_9zueSCjVWXPNh0cjO3lpXBXQQZx70G3Zxul9V/pub?output=csv&gid=1541890717";
+  // 13 Near-Total Ban States Enforcing Complete Conception Blocks (Local code backup fallback)
+  const backupBanStates = ['Alabama', 'Arkansas', 'Idaho', 'Indiana', 'Kentucky', 'Louisiana', 'Mississippi', 'Missouri', 'Oklahoma', 'South Dakota', 'Tennessee', 'Texas', 'West Virginia']
+
+  useEffect(() => {
+  // 🚀 THE SMART CACHE-BUSTER (Kept!):
+  // Adding the changing timestamp to the URL string still breaks your local browser cache completely,
+  // but it does it without triggering Google's strict header firewall.
+  const liveUrlWithNoCache = `${SPREADSHEET_CSV_URL}&nocache=${new Date().getTime()}`;
+
+  // 🔒 THE FIX: Remove the headers object entirely. Just pass the URL string raw!
+  fetch(liveUrlWithNoCache)
+    .then(res => {
+      if (!res.ok) throw new Error(`Google Sheets rejected the app! Status Code: ${res.status}`);
+      return res.text();
+    })
+    .then(text => {
+      // Change this slice index to .slice(1) if your data starts right on row 2 of the tab
+      const rows = text.split('\n').slice(1); 
+      const ruleMap = {}
+      
+      rows.forEach(row => {
+  const columns = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+  
+  if (columns[0]) {
+    const stateName = columns[0].trim().replace(/^"|"$/g, '');
+    const isBanned = columns[1]?.trim().toUpperCase() === 'TRUE';
+    
+    // Grabs Column 3 and cleanly scrubs away any structural wrapping quotes
+    const customMessage = columns[2]?.trim().replace(/^"|"$/g, '').replace(/""/g, '"'); 
+    
+    ruleMap[stateName] = { isBanned, customMessage };
+  }
+});
+      setStatePolicyRules(ruleMap);
+    })
+    .catch(err => {
+      console.log("Activating built-in fallback backup protection lists:", err);
+      const backupMap = {};
+      backupBanStates.forEach(st => {
+        backupMap[st] = {
+          isBanned: true,
+          customMessage: `Because you are under 18 in ${st}, local health clinics have strict parental consent or notification requirements. To keep you safe, we have hidden standard services that require parent signatures and highlighted alternative confidential pathways below.`
+        };
+      });
+      setStatePolicyRules(backupMap);
+    });
+}, []);
 
   const usStates = [
     'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 
@@ -39,18 +95,13 @@ export default function AppV1() {
     { id: 'pregnancy', name: 'I want to test for pregnancy', icon: '🩺', subtitle: 'Get confidential, highly accurate test options.' }
   ]
 
-  // Handles stepping backward safely
   const handleGoBack = () => {
-    if (screen === 4) {
-      setScreen(3)
-    } else if (screen === 3) {
-      setScreen(2)
-    } else if (screen === 2) {
-      setScreen(1)
-    }
+    if (screen === 4) setScreen(3)
+    else if (screen === 3) setScreen(2)
+    else if (screen === 2) setScreen(1)
   }
 
-  // Google Analytics Event Logger
+  // Privacy-Safe GA Logger
   const logToGoogleAnalytics = (finalAge, finalState, finalService) => {
     let ageRange = 'Under 15'
     const numericAge = Number(finalAge)
@@ -67,108 +118,47 @@ export default function AppV1() {
     }
   }
 
-  // Dynamic Recommendation Logic
+  // --- FILTER PIPELINE ENGINE ---
   const getRecommendations = () => {
-    let list = []
-    
-    if (selectedService === 'abortion') {
-      list.push({
-        name: '🔑 I Need an A (ineedana.com)',
-        desc: `The simplest way to find real, active abortion clinics near you. Completely personalized for a ${age}-year-old in ${stateLocation}.`,
-        link: 'https://www.ineedana.com',
-        type: 'in-person',
-        cost: 'insurance'
-      })
-      list.push({
-        name: '📦 Plan C (plancpills.org)',
-        desc: 'A directory showing you exactly how people buy abortion pills online and get them mailed securely to their house, even in restricted states.',
-        link: 'https://www.plancpills.org',
-        type: 'mail',
-        cost: 'free-cash'
-      })
+    let pipelineList = [...masterResources]
 
-      const minorStates = ['Texas', 'Florida', 'Ohio']
-      if (Number(age) < 18 && minorStates.includes(stateLocation)) {
-        list.push({
-          name: '⚖️ Judicial Bypass Support (reprolegalhelpline.org)',
-          desc: `In ${stateLocation}, minors usually need parent permission. If you can't tell your parents, this free legal line helps you get a confidential judge's note instead.`,
+    const isMinor = Number(age) < 18
+    const isRestrictedZone = statePolicyRules[stateLocation]?.isBanned || false
+
+    // STAGE 1: Service Category Match
+    pipelineList = pipelineList.filter(item => item.category === 'all' || item.category === selectedService)
+
+    // STAGE 2: Safety Audit Controls (Law Restrictions + Parental Consent Scrubbing)
+    if (isMinor && isRestrictedZone) {
+      // Scrub out any website resource object marked true for parental consent blocks
+      pipelineList = pipelineList.filter(item => !item.requiresParentalConsent)
+
+      if (selectedService === 'abortion') {
+        pipelineList = pipelineList.filter(item => item.deliveryType !== 'in-person')
+        pipelineList.unshift({
+          name: '⚖️ Repro Legal Helpline (reprolegalhelpline.org)',
+          desc: `Because you are under 18 in ${stateLocation}, physical care paths have deep legal hurdles. This private legal group helps you look safely into a confidential judge's note (Judicial Bypass) or safe travel paths.`,
           link: 'https://www.reprolegalhelpline.org',
-          type: 'mail',
-          cost: 'free-cash'
+          deliveryType: 'all',
+          costType: 'all',
+          requiresParentalConsent: false
         })
       }
     }
 
-    if (selectedService === 'testing') {
-      if (hasStiSymptoms === 'yes') {
-        list.push({
-          name: '🏥 Planned Parenthood Care Finder',
-          desc: 'Since you have symptoms, a quick physical clinic visit is best. Planned Parenthood treats everyone regardless of age or money, completely confidentially.',
-          link: 'https://www.plannedparenthood.org',
-          type: 'in-person',
-          cost: 'insurance'
-        })
-      } else {
-        list.push({
-          name: '🔬 TakeMeHome (takemehome.org)',
-          desc: 'Get an anonymous, free STI test kit mailed right to your door. You do a quick finger prick or swab, mail it back for free, and check your results online.',
-          link: 'https://takemehome.org',
-          type: 'mail',
-          cost: 'free-cash'
-        })
+    // STAGE 3: Secure Parameter Append Deep-Links
+    pipelineList = pipelineList.map(item => {
+      let finalUrl = item.link
+      if (item.link.includes('ineedana.com') || item.link.includes('abortionfinder.org')) {
+        finalUrl = `${item.link}/search?age=${age}&state=${stateLocation}`
       }
-    }
-
-    if (selectedService === 'contraceptive') {
-      if (contraceptiveUrgency === 'emergency') {
-        list.push({
-          name: '🚨 Emergency Pill Locator (ec.princeton.edu)',
-          desc: 'Find out exactly which over-the-counter emergency pills (like Plan B or Ella) are sitting on store shelves near you right now.',
-          link: 'https://ec.princeton.edu',
-          type: 'in-person',
-          cost: 'free-cash'
-        })
-      }
-      list.push({
-        name: '💊 Twentyeight Health or Wisp',
-        desc: 'Super youth-friendly telehealth platforms where doctors prescribe ongoing birth control online and ship it discretely to your room.',
-        link: 'https://www.twentyeighthealth.com',
-        type: 'mail',
-        cost: 'insurance'
-      })
-    }
-
-    if (selectedService === 'pregnancy') {
-      if (pregnancyTestStatus === 'need-test') {
-        list.push({
-          name: '🏥 Local Community Health Hubs',
-          desc: `Find free, completely confidential urine and blood pregnancy testing near you in ${stateLocation} without needing insurance or parent signatures.`,
-          link: 'https://www.plannedparenthood.org',
-          type: 'in-person',
-          cost: 'free-cash'
-        })
-      } else {
-        list.push({
-          name: '❤️ All-Options Talkline (all-options.org)',
-          desc: 'A beautiful, zero-judgment peer hotline where you can talk through your feelings and options after a positive test with someone who truly cares.',
-          link: 'https://www.all-options.org',
-          type: 'mail',
-          cost: 'free-cash'
-        })
-      }
-    }
-
-    list.push({
-      name: '💬 Scarleteen (scarleteen.com)',
-      desc: 'The ultimate, non-judgmental guide to sex, bodies, and relationships built entirely for teenagers and young adults.',
-      link: 'https://www.scarleteen.com',
-      type: 'all', 
-      cost: 'all'
+      return { ...item, link: finalUrl }
     })
 
-    return list.filter(item => {
-      const matchesDelivery = deliveryFilter === 'all' || item.type === 'all' || item.type === deliveryFilter;
-      const matchesCost = insuranceFilter === 'all' || item.cost === 'all' || item.cost === insuranceFilter;
+    // STAGE 4: Apply Active Top UI View Toggles
+    return pipelineList.filter(item => {
+      const matchesDelivery = deliveryFilter === 'all' || item.deliveryType === 'all' || item.deliveryType === deliveryFilter;
+      const matchesCost = insuranceFilter === 'all' || item.costType === 'all' || item.costType === insuranceFilter;
       return matchesDelivery && matchesCost;
     })
   }
@@ -198,7 +188,6 @@ export default function AppV1() {
           </p>
         </div>
         
-        {/* Progress Tracker */}
         <div className="flex items-center gap-1.5">
           <span className={`h-1.5 rounded-full transition-all ${screen === 1 ? 'w-8 bg-purple-600' : 'w-3 bg-slate-200'}`}></span>
           <span className={`h-1.5 rounded-full transition-all ${screen === 2 ? 'w-8 bg-purple-600' : 'w-3 bg-slate-200'}`}></span>
@@ -272,7 +261,7 @@ export default function AppV1() {
             <div className="flex flex-col gap-1.5">
               <label htmlFor="v1-age" className="text-xs font-bold uppercase tracking-wider text-slate-400">Your Age</label>
               <input 
-                id="v1-age" type="number" min="12" max="110" placeholder="e.g., 17" value={age} 
+                id="v1-age" type="number" min="12" max="110" placeholder="e.g., 16" value={age} 
                 onChange={(e) => setAge(e.target.value)} 
                 className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 font-medium"
                 required 
@@ -332,12 +321,8 @@ export default function AppV1() {
                       type="button" 
                       onClick={() => {
                         setWeeksPregnant(opt.value);
-                        // AUTOMATIC TRIAGE SYSTEM: Updates delivery filters instantly based on medical access windows
-                        if (opt.value === 'under10') {
-                          setDeliveryFilter('mail');
-                        } else {
-                          setDeliveryFilter('in-person');
-                        }
+                        if (opt.value === 'under10') setDeliveryFilter('mail');
+                        else setDeliveryFilter('in-person');
                       }}
                       className={`p-3 text-xs font-bold rounded-xl border text-center transition-all cursor-pointer ${weeksPregnant === opt.value ? 'border-purple-600 bg-purple-50 text-purple-700 ring-1 ring-purple-600' : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
                     >
@@ -346,7 +331,6 @@ export default function AppV1() {
                   ))}
                 </div>
 
-                {/* DYNAMIC SMART POLICY MESSAGES */}
                 {weeksPregnant === 'under10' && (
                   <div className="p-4 bg-purple-50/60 border border-purple-100 rounded-xl text-xs text-purple-950 animate-fade-in leading-relaxed">
                     <span className="font-bold block mb-0.5">📦 Automated Pill Customization:</span>
@@ -453,6 +437,14 @@ export default function AppV1() {
             <p className="text-sm text-slate-500 mt-1">Based safely on a {age}-year-old profile inside {stateLocation}.</p>
           </div>
 
+          {/* --- LIVE SPREADSHEET-DRIVEN WARNING NOTICE BANNER --- */}
+          {Number(age) < 18 && statePolicyRules[stateLocation]?.isBanned && (
+            <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl text-xs text-amber-900 mb-6 leading-relaxed animate-fade-in shadow-sm">
+              <span className="font-bold block mb-0.5 text-amber-950 text-sm">⚠️ Youth Access Notice:</span>
+              {statePolicyRules[stateLocation]?.customMessage}
+            </div>
+          )}
+
           {/* Interactive Filter Hub Row */}
           <div className="bg-slate-50 border border-slate-100 p-5 rounded-2xl mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="space-y-1.5 w-full sm:w-auto">
@@ -501,7 +493,7 @@ export default function AppV1() {
                     <div className="flex items-center gap-2 mb-1.5">
                       <h3 className="font-bold text-lg text-slate-900 m-0">{rec.name}</h3>
                       <span className="text-[10px] bg-slate-100 border border-slate-200/60 font-semibold px-2 py-0.5 rounded-full text-slate-500 uppercase tracking-wide">
-                        {rec.type === 'mail' ? '📦 Mail' : rec.type === 'in-person' ? '🏥 Clinic' : '🌐 Info'}
+                        {rec.deliveryType === 'mail' ? '📦 Mail' : rec.deliveryType === 'in-person' ? '🏥 Clinic' : '🌐 Info'}
                       </span>
                     </div>
                     <p className="text-xs text-slate-500 leading-relaxed">{rec.desc}</p>
