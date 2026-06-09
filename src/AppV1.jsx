@@ -23,27 +23,19 @@ export default function AppV1() {
   // Live Cloud Spreadsheet Rules Mapping Object
   const [statePolicyRules, setStatePolicyRules] = useState({})
   
-  // 🌟 REPLACE "YOUR_GID_NUMBER_HERE" WITH YOUR ACTUAL TAB ID (e.g., 0)
-
-  // 🚀 THE CORRECT LINK FROM YOUR PUBLISHED ID:
   const SPREADSHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQuniRrxCGELPePf7UCxyuwNKRSnVTCQbOYH4jeVL_9zueSCjVWXPNh0cjO3lpXBXQQZx70G3Zxul9V/pub?output=csv&gid=1541890717";
+
   // 13 Near-Total Ban States Enforcing Complete Conception Blocks (Local code backup fallback)
   const backupBanStates = ['Alabama', 'Arkansas', 'Idaho', 'Indiana', 'Kentucky', 'Louisiana', 'Mississippi', 'Missouri', 'Oklahoma', 'South Dakota', 'Tennessee', 'Texas', 'West Virginia']
 
   useEffect(() => {
-  // 🚀 THE SMART CACHE-BUSTER (Kept!):
-  // Adding the changing timestamp to the URL string still breaks your local browser cache completely,
-  // but it does it without triggering Google's strict header firewall.
   const liveUrlWithNoCache = `${SPREADSHEET_CSV_URL}&nocache=${new Date().getTime()}`;
-
-  // 🔒 THE FIX: Remove the headers object entirely. Just pass the URL string raw!
   fetch(liveUrlWithNoCache)
     .then(res => {
       if (!res.ok) throw new Error(`Google Sheets rejected the app! Status Code: ${res.status}`);
       return res.text();
     })
     .then(text => {
-      // Change this slice index to .slice(1) if your data starts right on row 2 of the tab
       const rows = text.split('\n').slice(1); 
       const ruleMap = {}
       
@@ -54,7 +46,6 @@ export default function AppV1() {
     const stateName = columns[0].trim().replace(/^"|"$/g, '');
     const isBanned = columns[1]?.trim().toUpperCase() === 'TRUE';
     
-    // Grabs Column 3 and cleanly scrubs away any structural wrapping quotes
     const customMessage = columns[2]?.trim().replace(/^"|"$/g, '').replace(/""/g, '"'); 
     
     ruleMap[stateName] = { isBanned, customMessage };
