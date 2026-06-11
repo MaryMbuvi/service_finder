@@ -1,684 +1,449 @@
-import { useState } from 'react'
-import { masterResources } from './data/resources.js' // Reads our updated data file
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { masterResources } from './data/resources.js';
+
+// --- GLOBAL STATIC CONFIGURATIONS ---
+const US_STATES = [
+  'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'
+];
+
+const HIGH_RESTRICTION_STATES = ['Texas', 'Florida', 'Ohio', 'Alabama', 'Arkansas', 'Mississippi', 'Kentucky', 'Louisiana'];
+
+const MASTER_HELPLINES = [
+  { name: "Mhealth & Reproductive Rights Helpline", contact: "reprolegalhelpline.org", desc: "Secure online legal portal for guidance on age rules and judicial bypass laws." },
+  { name: "Love is Respect (Teen Safety)", contact: "Text 'LOVEIS' to 22522", desc: "100% confidential space to text or talk if a partner is threatening or hurting you." },
+  { name: "Planned Parenthood Direct", contact: "1-800-230-PLAN", desc: "Connects your call directly to the nearest youth-vetted clinical health office." },
+  { name: "988 Suicide & Crisis Lifeline", contact: "Text or Call 988", desc: "Free, confidential, 24/7 support if you are feeling completely overwhelmed." }
+];
+
+const SERVICES = [
+  { id: 'abortion', name: 'Abortion' },
+  { id: 'testing', name: 'STI Testing' },
+  { id: 'contraceptive', name: 'Birth Control' },
+  { id: 'pregnancy', name: 'Pregnancy' },
+  { id: 'lgbtq', name: 'LGBTQ+ Resources' },
+  { id: 'mental', name: 'Mental Health' },
+  { id: 'gbv', name: 'Safety & Abuse Support' }
+];
 
 export default function AppV2() {
-  // Screens: 1=Demographics, 2=Service Selection, 3=Deep Questions, 4=Your Safe Options
-  const [screen, setScreen] = useState(1)
-
-  // User Core Context
-  const [age, setAge] = useState('')
-  const [stateLocation, setStateLocation] = useState('')
-  const [selectedService, setSelectedService] = useState('')
-
-  // Sub-questions
-  const [weeksPregnant, setWeeksPregnant] = useState('')
-  const [hasStiSymptoms, setHasStiSymptoms] = useState('')
-  const [contraceptiveUrgency, setContraceptiveUrgency] = useState('')
-  const [pregnancyTestStatus, setPregnancyTestStatus] = useState('')
+  // Core Profile
+  const [age, setAge] = useState('');
+  const [stateLocation, setStateLocation] = useState('');
   
-  // Expanded Sub-questions for Mental Health and GBV
-  const [mentalHealthType, setMentalHealthType] = useState('') // 'distress', 'routine'
-  const [gbvSupportPreference, setGbvSupportPreference] = useState('') // 'digital', 'physical'
+  // Service Navigation
+  const [selectedService, setSelectedService] = useState(null);
 
-  // Interactive UI Filter Controls
-  const [deliveryFilter, setDeliveryFilter] = useState('all') 
-  const [insuranceFilter, setInsuranceFilter] = useState('all') 
+  // Sub-question Filters
+  const [weeksPregnant, setWeeksPregnant] = useState('');
+  const [hasStiSymptoms, setHasStiSymptoms] = useState('');
+  const [contraceptiveUrgency, setContraceptiveUrgency] = useState('');
+  const [pregnancyTestStatus, setPregnancyTestStatus] = useState('');
+  const [mentalHealthType, setMentalHealthType] = useState('');
+  const [gbvSupportPreference, setGbvSupportPreference] = useState('');
 
-  // States with total abortion bans or severe minor/consent restrictions
-  const highRestrictionStates = ['Texas', 'Florida', 'Ohio', 'Alabama', 'Arkansas', 'Mississippi', 'Kentucky', 'Louisiana']
+  // UI Interactive Toggles
+  const [deliveryFilter, setDeliveryFilter] = useState('all');
+  const [insuranceFilter, setInsuranceFilter] = useState('all');
 
-  const usStates = [
-    'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 
-    'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia', 
-    'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 
-    'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 
-    'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri', 
-    'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey', 
-    'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio', 
-    'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 
-    'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont', 
-    'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'
-  ]
-  
-  const services = [
-    { id: 'abortion', name: 'I want an abortion', icon: '💊', subtitle: 'Explore safe, private medical and legal pathways.' },
-    { id: 'testing', name: 'I want STI testing', icon: '🔬', subtitle: 'Find discreet, rapid check-up resources.' },
-    { id: 'contraceptive', name: 'I want a contraceptive', icon: '📅', subtitle: 'Access birth control, patches, or emergency options.' },
-    { id: 'pregnancy', name: 'I want to test for pregnancy', icon: '🤰', subtitle: 'Get confidential, highly accurate test options.' },
-    { id: 'lgbtq', name: 'I want LGBTQ+ affirming care', icon: '🌈', subtitle: 'Find confidential support spaces and remote networks.' },
-    { id: 'mental', name: 'I want mental health support', icon: '🧠', subtitle: 'Access crisis text lines and off-the-record counseling.' },
-    { id: 'gbv', name: 'I want safety from violence (GBV)', icon: '❤️‍🩹', subtitle: 'Anonymous crisis lines and emergency local protection.' }
-  ]
-
-  // --- INTERACTIVE PIPELINE ROUTER ---
-  const handleServiceSelection = (serviceId) => {
-    setSelectedService(serviceId);
-    
-    if (serviceId === 'lgbtq') {
-      logToGoogleAnalytics(age, stateLocation, serviceId);
-      setDeliveryFilter('all');
-      setScreen(4);
-    } else {
-      setScreen(3); 
-    }
-  }
-
-  const handleGoBack = () => {
-    if (screen === 4) {
-      if (selectedService === 'lgbtq') {
-        setScreen(2);
-      } else {
-        setScreen(3);
-      }
-    }
-    else if (screen === 3) setScreen(2)
-    else if (screen === 2) { setScreen(1); setSelectedService(''); }
-  }
-
-  const triggerQuickEscape = () => {
-    window.location.replace("https://www.google.com"); 
-  }
+  const resultsRef = useRef(null);
 
   // Privacy-Safe GA Logger
   const logToGoogleAnalytics = (finalAge, finalState, finalService) => {
-    let ageRange = 'Under 15'
-    const numericAge = Number(finalAge)
-    if (numericAge >= 15 && numericAge <= 17) ageRange = '15-17'
-    else if (numericAge >= 18 && numericAge <= 21) ageRange = '18-21'
-    else if (numericAge > 21) ageRange = '22+'
+    let ageRange = 'Under 15';
+    const numericAge = Number(finalAge);
+    if (numericAge >= 15 && numericAge <= 17) ageRange = '15-17';
+    else if (numericAge >= 18 && numericAge <= 21) ageRange = '18-21';
+    else if (numericAge > 21) ageRange = '22+';
 
     if (typeof window.gtag !== 'undefined') {
       window.gtag('event', 'resource_search', {
-        'user_state': finalState,
-        'user_age_group': ageRange,
+        'user_state': finalState || 'unspecified',
+        'user_age_group': finalAge ? ageRange : 'unspecified',
         'service_type': finalService,
       });
     }
-  }
+  };
 
-  // --- THE COMPREHENSIVE FILTER PIPELINE ENGINE ---
-  const getRecommendations = () => {
-    let pipelineList = [...masterResources]
+  const handleServiceClick = (serviceId) => {
+    if (selectedService === serviceId) {
+      setSelectedService(null); 
+    } else {
+      setSelectedService(serviceId);
+      
+      // Reset sub-questions when changing categories so old filters don't pollute the new search
+      setWeeksPregnant('');
+      setHasStiSymptoms('');
+      setContraceptiveUrgency('');
+      setPregnancyTestStatus('');
+      setMentalHealthType('');
+      setGbvSupportPreference('');
+      setDeliveryFilter('all');
+      setInsuranceFilter('all');
 
-    const isMinor = Number(age) < 18
-    const isRestrictedZone = highRestrictionStates.includes(stateLocation)
+      logToGoogleAnalytics(age, stateLocation, serviceId);
+      setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+    }
+  };
 
-    // STAGE 1: Category Match
-    pipelineList = pipelineList.filter(item => item.category === 'all' || item.category === selectedService)
+  const triggerQuickEscape = () => {
+    window.location.replace("https://www.google.com"); 
+  };
 
-    // STAGE 2: Safety Audit & Situational Directives
+  // --- 🚀 INSTANT MEMOIZED PIPELINE ENGINE ---
+  const activeResources = useMemo(() => {
+    if (!selectedService) return [];
+    
+    const rawData = Array.isArray(masterResources) ? masterResources : [];
+    let list = [...rawData];
+
+    const isMinor = age !== '' && Number(age) < 18;
+    const isRestrictedZone = stateLocation !== '' && HIGH_RESTRICTION_STATES.includes(stateLocation);
+
+    list = list.filter(item => item?.category === 'all' || item?.category === selectedService);
+
     if (isMinor && isRestrictedZone) {
-      pipelineList = pipelineList.filter(item => !item.requiresParentalConsent)
+      list = list.filter(item => !item?.requiresParentalConsent);
 
       if (selectedService === 'abortion') {
-        pipelineList = pipelineList.filter(item => item.deliveryType !== 'in-person')
-        pipelineList.unshift({
+        list = list.filter(item => item?.deliveryType !== 'in-person');
+        list.unshift({
           name: 'Repro Legal Helpline (reprolegalhelpline.org)',
-          desc: `Because you are under 18 in ${stateLocation}, physical care paths have deep legal hurdles. This private legal group helps you look safely into a confidential judge's note (Judicial Bypass) or safe travel paths.`,
+          desc: `Because you are under 18 in ${stateLocation}, physical care paths have deep legal hurdles. This private legal group helps you safely explore a confidential judge's note (Judicial Bypass) or safe travel paths.`,
           link: 'https://www.reprolegalhelpline.org',
           deliveryType: 'all',
           costType: 'all',
           requiresParentalConsent: false
-        })
+        });
       }
-
       if (selectedService === 'lgbtq') {
-        pipelineList = pipelineList.filter(item => item.deliveryType !== 'in-person')
+        list = list.filter(item => item?.deliveryType !== 'in-person');
       }
     }
 
-    // STAGE 3: Handle Situational Question Selections
+    if (selectedService === 'abortion' && weeksPregnant) {
+        list = list.filter(item => item?.subType === 'all' || item?.subType === weeksPregnant);
+    }
     if (selectedService === 'mental' && mentalHealthType) {
-      pipelineList = pipelineList.filter(item => item.subType === 'all' || item.subType === mentalHealthType)
+      list = list.filter(item => item?.subType === 'all' || item?.subType === mentalHealthType);
     }
     if (selectedService === 'gbv' && gbvSupportPreference) {
-      pipelineList = pipelineList.filter(item => item.subType === 'all' || item.subType === gbvSupportPreference)
+      list = list.filter(item => item?.subType === 'all' || item?.subType === gbvSupportPreference);
     }
 
-    // STAGE 4: Build Secure Deep-Links
-    pipelineList = pipelineList.map(item => {
-      let finalUrl = item.link
-      if (item.link.includes('ineedana.com') || item.link.includes('abortionfinder.org')) {
-        finalUrl = `${item.link}/search?age=${age}&state=${stateLocation}`
+    list = list.map(item => {
+      let finalUrl = item?.link || '#';
+      if ((item?.link?.includes('ineedana.com') || item?.link?.includes('abortionfinder.org')) && age && stateLocation) {
+        finalUrl = `${item.link}/search?age=${age}&state=${stateLocation}`;
       }
-      return { ...item, link: finalUrl }
-    })
+      return { ...item, link: finalUrl };
+    });
 
-    // STAGE 5: Interactive User View UI Filters
-    return pipelineList.filter(item => {
-      const matchesDelivery = deliveryFilter === 'all' || item.deliveryType === 'all' || item.deliveryType === deliveryFilter;
-      const matchesCost = insuranceFilter === 'all' || item.costType === 'all' || item.costType === insuranceFilter;
+    return list.filter(item => {
+      const matchesDelivery = deliveryFilter === 'all' || item?.deliveryType === 'all' || item?.deliveryType === deliveryFilter;
+      const matchesCost = insuranceFilter === 'all' || item?.costType === 'all' || item?.costType === insuranceFilter;
       return matchesDelivery && matchesCost;
-    })
-  }
+    });
 
-  const handleReset = () => {
-    setScreen(1)
-    setSelectedService('')
-    setWeeksPregnant('')
-    setHasStiSymptoms('')
-    setContraceptiveUrgency('')
-    setPregnancyTestStatus('')
-    setMentalHealthType('')
-    setGbvSupportPreference('')
-    setDeliveryFilter('all')
-    setInsuranceFilter('all')
-  }
+  }, [selectedService, age, stateLocation, weeksPregnant, hasStiSymptoms, contraceptiveUrgency, pregnancyTestStatus, mentalHealthType, gbvSupportPreference, deliveryFilter, insuranceFilter]);
+
+  // A composite string to trigger a visual re-render animation in the results box when core info changes
+  const refreshTriggerKey = `${age}-${stateLocation}-${deliveryFilter}-${insuranceFilter}`;
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-6 py-4 font-sans text-slate-800 antialiased relative">
+    <div className="bg-[#FDF8F8] min-h-screen font-sans text-slate-800 antialiased relative pb-20">
       
-      {/* GLOBAL HEADBOARD */}
-      <div className="flex justify-between items-center border-b border-slate-100 pb-6 mb-8 sticky top-0 bg-white/95 backdrop-blur z-50 py-2">
+      {/* ⚡ STICKY GLOBAL HEADBOARD & ESCAPE */}
+      <div className="sticky top-0 bg-white/95 backdrop-blur-md z-50 shadow-sm border-b border-purple-100 px-4 py-3 sm:px-6 sm:py-4 flex justify-between items-center w-full">
         <div>
-          <h1 className="text-2xl font-black text-purple-700 tracking-wide m-0 p-0 uppercase">
-            Asking For A Friend
+          <h1 className="text-lg sm:text-2xl font-black text-[#163D46] tracking-tight leading-none">
+            Service Finder
           </h1>
-          <p className="text-xs uppercase tracking-widest text-slate-400 font-bold mt-0.5">
-            Service Finder <span className="text-purple-400 font-medium">(Option 2)</span>
-          </p>
         </div>
-        
-        <div className="flex items-center gap-4">
-          <button 
-            type="button" 
-            onClick={triggerQuickEscape}
-            className="bg-red-400 hover:bg-red-500 text-white text-xs font-black px-4 py-2 rounded-xl uppercase tracking-wider transition-all shadow-sm cursor-pointer"
-          >
-            ⚡ Quick Escape
-          </button>
-          <div className="flex items-center gap-1.5 hidden sm:flex">
-            <span className={`h-1.5 rounded-full transition-all ${screen === 1 ? 'w-8 bg-purple-600' : 'w-3 bg-slate-200'}`}></span>
-            <span className={`h-1.5 rounded-full transition-all ${screen === 2 ? 'w-8 bg-purple-600' : 'w-3 bg-slate-200'}`}></span>
-            <span className={`h-1.5 rounded-full transition-all ${screen === 3 ? 'w-8 bg-purple-600' : 'w-3 bg-slate-200'}`}></span>
-            <span className={`h-1.5 rounded-full transition-all ${screen === 4 ? 'w-8 bg-purple-600' : 'w-3 bg-slate-200'}`}></span>
+        <button 
+          onClick={triggerQuickEscape}
+          className="bg-red-400 hover:bg-red-500 text-white text-[10px] sm:text-xs font-black px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl uppercase tracking-wider transition-all shadow-sm active:scale-95 flex items-center gap-1.5 cursor-pointer"
+        >
+          <span className="text-sm">⚡</span> Quick Escape
+        </button>
+      </div>
+
+      <div className="w-full max-w-5xl mx-auto px-4 mt-8 space-y-8 flex flex-col items-center">
+
+        {/* 📋 INLINE CONTEXT BAR */}
+        <div className="w-full max-w-4xl bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex-1">
+            <h3 className="text-sm font-black text-[#163D46] uppercase tracking-wider">Your Details</h3>
+            <p className="text-[11px] text-[#5F737B] mt-0.5 leading-snug">Entering this auto-filters clinics to match local laws.</p>
+          </div>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <input 
+              type="number" placeholder="Age" min="12" max="110" 
+              value={age} onChange={(e) => setAge(e.target.value)} 
+              className="w-20 p-3 text-sm font-bold bg-[#FDF8F8] border border-gray-200 rounded-xl text-[#163D46] focus:outline-none focus:border-[#C8B4FA] focus:bg-white transition-all text-center" 
+            />
+            <select 
+              value={stateLocation} onChange={(e) => setStateLocation(e.target.value)}
+              className="flex-1 sm:w-48 p-3 text-sm font-bold bg-[#FDF8F8] border border-gray-200 rounded-xl text-[#163D46] focus:outline-none focus:border-[#C8B4FA] focus:bg-white transition-all cursor-pointer"
+            >
+              <option value="">Select State...</option>
+              {US_STATES.map(st => <option key={st} value={st}>{st}</option>)}
+            </select>
           </div>
         </div>
-      </div>
 
-      {/* CONFIDENTIAL SAFETY NOTICE */}
-      <div className="bg-purple-50/70 border border-purple-100 p-4 rounded-2xl flex items-start gap-3 text-xs text-purple-900 mb-6 max-w-3xl mx-auto leading-relaxed">
-        <span className="text-sm mt-0.5">🔒</span>
-        <div>
-          <span className="font-bold">You are totally safe here.</span> We do not save your name, your age, your location, or anything you type. Once you close this window, your answers disappear forever.
-        </div>
-      </div>
-
-      {/* --- SCREEN 1: DEMOGRAPHICS --- */}
-      {screen === 1 && (
-        <div className="max-w-md mx-auto bg-white p-8 rounded-2xl border border-slate-100 shadow-sm text-center">
-          <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">Let's find what is legal & close to you</h2>
-          <p className="text-sm text-slate-500 mt-2 leading-relaxed">
-            Healthcare access laws change depending on how old you are and your current state location. Let's make sure we show you the right options.
-          </p>
-
-          <form onSubmit={(e) => { e.preventDefault(); setScreen(2); }} className="w-full flex flex-col gap-5 mt-6 text-left">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="v2-age" className="text-xs font-bold uppercase tracking-wider text-slate-400">Your Age</label>
-              <input 
-                id="v2-age" type="number" min="12" max="110" placeholder="e.g., 16" value={age} 
-                onChange={(e) => setAge(e.target.value)} 
-                className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 font-medium"
-                required 
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="v2-state" className="text-xs font-bold uppercase tracking-wider text-slate-400">Your State</label>
-              <select 
-                id="v2-state" value={stateLocation} 
-                onChange={(e) => setStateLocation(e.target.value)} 
-                className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 font-medium"
-                required
+        {/* 🏥 WHAT KIND OF SERVICES ARE YOU LOOKING FOR? */}
+        <div className="w-full max-w-4xl space-y-4">
+          <h2 className="text-xl sm:text-2xl font-bold text-[#163D46] tracking-tight">What kind of services you are looking for?</h2>
+          <div className="flex flex-wrap gap-3">
+            {SERVICES.map((srv) => (
+              <button
+                key={srv.id} 
+                onClick={() => handleServiceClick(srv.id)}
+                className={`px-5 py-3 rounded-xl text-sm font-bold transition-all border-2 active:scale-95 cursor-pointer ${
+                  selectedService === srv.id
+                    ? 'bg-[#E0D4FD] text-[#163D46] border-[#C8B4FA] shadow-sm'
+                    : 'bg-white text-slate-600 border-gray-200 hover:border-[#D1D5DB]'
+                }`}
               >
-                <option value="">Select your location...</option>
-                {usStates.map(st => <option key={st} value={st}>{st}</option>)}
-              </select>
-            </div>
-
-            <button type="submit" className="w-full bg-slate-900 hover:bg-purple-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-sm transition-all text-sm mt-2 flex items-center justify-center gap-2 cursor-pointer">
-              Next Step ➔
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* --- SCREEN 2: SERVICE SELECTION --- */}
-      {screen === 2 && (
-        <div className="max-w-3xl mx-auto">
-          <div className="bg-slate-50 border border-slate-100 p-3 rounded-xl flex items-center justify-between text-xs font-semibold text-slate-600 mb-8">
-            <div className="flex gap-3">
-              <span>📍 {stateLocation}</span>
-              <span>⏳ Age: {age}</span>
-            </div>
-            <button type="button" onClick={() => setScreen(1)} className="text-purple-700 hover:underline font-bold cursor-pointer">Change details</button>
-          </div>
-
-          <h2 className="text-3xl font-black text-slate-900 tracking-tight text-center mb-10">
-            What do you need help with today?
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {services.map(srv => {
-              return (
-                <button 
-                  key={srv.id} type="button" onClick={() => handleServiceSelection(srv.id)} 
-                  className={`p-6 rounded-2xl text-left border transition-all flex items-center gap-4 cursor-pointer min-h-[106px] ${
-                    selectedService === srv.id 
-                      ? 'border-purple-600 bg-purple-50/40 ring-1 ring-purple-600' 
-                      : 'border-slate-200 hover:border-slate-300 bg-white shadow-sm'
-                  }`}
-                >
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0 bg-slate-50 text-slate-700">
-                    {srv.icon}
-                  </div>
-                  <div>
-                    <span className="block font-bold text-base tracking-tight text-slate-800">{srv.name}</span>
-                    <span className="block text-xs text-slate-400 mt-0.5 font-normal leading-tight">{srv.subtitle}</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10">
-            <button 
-              type="button" onClick={handleGoBack}
-              className="w-full sm:w-auto px-8 py-4 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-sm font-bold text-slate-500 hover:text-slate-800 transition-all cursor-pointer"
-            >
-              ← Go Back
-            </button>
+                {srv.name}
+              </button>
+            ))}
           </div>
         </div>
-      )}
 
-      {/* --- SCREEN 3: TIMELINE AND SYMPTOM DEEP QUESTIONS --- */}
-      {screen === 3 && (
-        <div className="max-w-xl mx-auto bg-white p-8 rounded-2xl border border-slate-100 shadow-sm">
-          <h2 className="text-xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-            Help us customize your list
-          </h2>
-          <p className="text-sm text-slate-500 mt-1">
-            Select the statement that matches your current situation to view your recommendations.
-          </p>
-
-          <div className="mt-8 space-y-6">
-            {/* Abortion Custom Descriptions */}
-            {selectedService === 'abortion' && (
-              <div className="space-y-4">
-                <label className="block text-sm font-bold text-slate-700">How many weeks has it been since your last period?</label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                  {[
-                    { value: 'under10', label: 'Under 10 Weeks' },
-                    { value: '10to15', label: '10 to 15 Weeks' },
-                    { value: 'over15', label: 'Over 15 Weeks' }
-                  ].map(opt => (
-                    <button
-                      key={opt.value} type="button" 
-                      onClick={() => {
-                        setWeeksPregnant(opt.value);
-                        setDeliveryFilter(opt.value === 'under10' ? 'mail' : 'in-person'); 
-                      }}
-                      className={`p-3 text-xs font-bold rounded-xl border text-center transition-all cursor-pointer ${weeksPregnant === opt.value ? 'border-purple-600 bg-purple-50 text-purple-700 ring-1 ring-purple-600' : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-                
-                {weeksPregnant === 'under10' && (
-                  <div className="p-4 bg-purple-50/60 border border-purple-100 rounded-xl text-xs text-purple-950 animate-fade-in leading-relaxed">
-                    <span className="font-bold block mb-0.5">Recommended Route: Pills By Mail</span>
-                    At under 10 weeks, you are medically eligible for telehealth abortion medication options. We have updated your dashboard filter layout to By Mail to highlight discrete remote shipping services.
-                  </div>
-                )}
-                {(weeksPregnant === '10to15' || weeksPregnant === 'over15') && (
-                  <div className="p-4 bg-amber-50/60 border border-amber-100 rounded-xl text-xs text-amber-950 animate-fade-in leading-relaxed">
-                    <span className="font-bold block mb-0.5">Recommended Route: In-Person Care Only</span>
-                    At this gestational stage, care can only be safely provided inside physical clinics. We have updated your dashboard layout to In Person options to lock out out-of-date mail listings and ensure safe clinical access.
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* STI Custom Descriptions */}
-            {selectedService === 'testing' && (
-              <div className="space-y-4">
-                <label className="block text-sm font-bold text-slate-700">Are you currently experiencing physical discomfort or visible symptoms?</label>
-                <div className="flex gap-4 pt-2">
-                  {[
-                    { value: 'yes', label: 'Yes, I feel active symptoms' },
-                    { value: 'no', label: 'No, just a regular routine checkup' }
-                  ].map(opt => (
-                    <button
-                      key={opt.value} type="button" 
-                      onClick={() => {
-                        setHasStiSymptoms(opt.value);
-                        setDeliveryFilter(opt.value === 'no' ? 'mail' : 'in-person');
-                      }}
-                      className={`flex-1 p-4 text-xs font-bold rounded-xl border text-center transition-all cursor-pointer ${hasStiSymptoms === opt.value ? 'border-purple-600 bg-purple-50 text-purple-700 ring-1 ring-purple-600' : 'border-slate-200 bg-slate-50 text-slate-600'}`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-
-                {hasStiSymptoms === 'yes' && (
-                  <div className="p-4 bg-purple-50/60 border border-purple-100 rounded-xl text-xs text-purple-950 animate-fade-in leading-relaxed">
-                    <span className="font-bold block mb-0.5">Recommended Route: In-Person Testing</span>
-                    If you have active symptoms, we recommend in-clinic testing for faster laboratory results and immediate treatment options. Your filters have been set to In Person clinics.
-                  </div>
-                )}
-                {hasStiSymptoms === 'no' && (
-                  <div className="p-4 bg-purple-50/60 border border-purple-100 rounded-xl text-xs text-purple-950 animate-fade-in leading-relaxed">
-                    <span className="font-bold block mb-0.5">Recommended Route: Home Test Kits</span>
-                    For routine wellness checkups without symptoms, at-home self-swab kits are a highly private and convenient option. Your filters have been pre-set to By Mail.
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Contraceptive Custom Descriptions */}
-            {selectedService === 'contraceptive' && (
-              <div className="space-y-4">
-                <label className="block text-sm font-bold text-slate-700">Do you need something because of an accident that just happened?</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                  {[
-                    { value: 'emergency', label: 'Yes, emergency care needed (Plan B window)' },
-                    { value: 'routine', label: 'No, looking for regular birth control options' }
-                  ].map(opt => (
-                    <button
-                      key={opt.value} type="button" 
-                      onClick={() => {
-                        setContraceptiveUrgency(opt.value);
-                        setDeliveryFilter(opt.value === 'emergency' ? 'mail' : 'in-person');
-                      }}
-                      className={`p-4 text-xs font-bold rounded-xl border text-left transition-all cursor-pointer ${contraceptiveUrgency === opt.value ? 'border-purple-600 bg-purple-50 text-purple-700 ring-1 ring-purple-600' : 'border-slate-200 bg-slate-50 text-slate-600'}`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-
-                {contraceptiveUrgency === 'emergency' && (
-                  <div className="p-4 bg-purple-50/60 border border-purple-100 rounded-xl text-xs text-purple-950 animate-fade-in leading-relaxed">
-                    <span className="font-bold block mb-0.5">Recommended Route: Fast Emergency Access</span>
-                    For recent accidents, time is critical. We are prioritizing immediate over-the-counter morning-after emergency pills or discrete overnight delivery networks.
-                  </div>
-                )}
-                {contraceptiveUrgency === 'routine' && (
-                  <div className="p-4 bg-purple-50/60 border border-purple-100 rounded-xl text-xs text-purple-950 animate-fade-in leading-relaxed">
-                    <span className="font-bold block mb-0.5">Recommended Route: Ongoing Management</span>
-                    For continuous pregnancy prevention, we emphasize confidential family planning clinics or low-cost online prescriptions for standard birth control options.
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Pregnancy Testing Custom Descriptions */}
-            {selectedService === 'pregnancy' && (
-              <div className="space-y-4">
-                <label className="block text-sm font-bold text-slate-700">Where are you at with your testing process?</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                  {[
-                    { value: 'need-test', label: 'I need to take a test (Looking for private options)' },
-                    { value: 'already-positive', label: 'I already tested positive (Looking for guidance)' }
-                  ].map(opt => (
-                    <button
-                      key={opt.value} type="button" 
-                      onClick={() => {
-                        setPregnancyTestStatus(opt.value);
-                        setDeliveryFilter(opt.value === 'need-test' ? 'mail' : 'in-person');
-                      }}
-                      className={`p-4 text-xs font-bold rounded-xl border text-left transition-all cursor-pointer ${pregnancyTestStatus === opt.value ? 'border-purple-600 bg-purple-50 text-purple-700 ring-1 ring-purple-600' : 'border-slate-200 bg-slate-50 text-slate-600'}`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-
-                {pregnancyTestStatus === 'need-test' && (
-                  <div className="p-4 bg-purple-50/60 border border-purple-100 rounded-xl text-xs text-purple-950 animate-fade-in leading-relaxed">
-                    <span className="font-bold block mb-0.5">Recommended Route: Free & Private Tests</span>
-                    If you need to check your status, we highlight private networks that can ship free, unbranded test strips or point you to off-the-record testing resources.
-                  </div>
-                )}
-                {pregnancyTestStatus === 'already-positive' && (
-                  <div className="p-4 bg-purple-50/60 border border-purple-100 rounded-xl text-xs text-purple-950 animate-fade-in leading-relaxed">
-                    <span className="font-bold block mb-0.5">Recommended Route: Medical Verification & Advice</span>
-                    If you have already seen a positive result, we prioritize confidential support talklines and independent community clinics to discuss safe legal options and confirmation.
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Mental Health Custom Descriptions */}
-            {selectedService === 'mental' && (
-              <div className="space-y-4">
-                <label className="block text-sm font-bold text-slate-700">What level of mental health support are you looking for right now?</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                  {[
-                    { value: 'distress', label: 'Immediate support (Crisis, distress, or urgent talk lines)' },
-                    { value: 'routine', label: 'Routine support (Long-term counseling and regular therapy)' }
-                  ].map(opt => (
-                    <button
-                      key={opt.value} type="button" 
-                      onClick={() => {
-                        setMentalHealthType(opt.value);
-                        setDeliveryFilter('all');
-                      }}
-                      className={`p-4 text-xs font-bold rounded-xl border text-left transition-all cursor-pointer ${mentalHealthType === opt.value ? 'border-purple-600 bg-purple-50 text-purple-700 ring-1 ring-purple-600' : 'border-slate-200 bg-slate-50 text-slate-600'}`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-
-                {mentalHealthType === 'distress' && (
-                  <div className="p-4 bg-purple-50/60 border border-purple-100 rounded-xl text-xs text-purple-950 animate-fade-in leading-relaxed">
-                    <span className="font-bold block mb-0.5">Recommended Route: Immediate Crisis Response</span>
-                    If you are experiencing acute distress, we recommend zero-trace, encrypted crisis lines for rapid emotional support from trained professionals.
-                  </div>
-                )}
-                {mentalHealthType === 'routine' && (
-                  <div className="p-4 bg-purple-50/60 border border-purple-100 rounded-xl text-xs text-purple-950 animate-fade-in leading-relaxed">
-                    <span className="font-bold block mb-0.5">Recommended Route: Off-The-Record Counseling</span>
-                    For continuous therapeutic care, we prioritize cash-only sliding scale directories. This keeps your records invisible to parent insurance statements and paper trails.
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* GBV Custom Descriptions */}
-            {selectedService === 'gbv' && (
-              <div className="space-y-4">
-                <label className="block text-sm font-bold text-slate-700">What type of security or care option feels safest right now?</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                  {[
-                    { value: 'digital', label: 'Digital/Text Support (Secure online chat networks and text lines)' },
-                    { value: 'physical', label: 'Physical Protection (Domestic violence shelters and emergency housing)' }
-                  ].map(opt => (
-                    <button
-                      key={opt.value} type="button" 
-                      onClick={() => {
-                        setGbvSupportPreference(opt.value);
-                        setDeliveryFilter('all');
-                      }}
-                      className={`p-4 text-xs font-bold rounded-xl border text-left transition-all cursor-pointer ${gbvSupportPreference === opt.value ? 'border-purple-600 bg-purple-50 text-purple-700 ring-1 ring-purple-600' : 'border-slate-200 bg-slate-50 text-slate-600'}`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-
-                {gbvSupportPreference === 'digital' && (
-                  <div className="p-4 bg-purple-50/60 border border-purple-100 rounded-xl text-xs text-purple-950 animate-fade-in leading-relaxed">
-                    <span className="font-bold block mb-0.5">Recommended Route: Secure Remote Guidance</span>
-                    If you prefer private communication from a distance, we recommend encrypted, un-logged safety text lines to talk through options safely from your device.
-                  </div>
-                )}
-                {gbvSupportPreference === 'physical' && (
-                  <div className="p-4 bg-purple-50/60 border border-purple-100 rounded-xl text-xs text-purple-950 animate-fade-in leading-relaxed">
-                    <span className="font-bold block mb-0.5">Recommended Route: Shelter & Emergency Housing</span>
-                    If you are facing danger at home, we recommend verified local unlisted youth domestic violence shelters that can provide safe, free housing without parent signature mandates.
-                  </div>
-                )}
-              </div>
-            )}
-
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8 pt-6 border-t border-slate-100">
-            <button 
-              type="button" onClick={handleGoBack}
-              className="w-full sm:w-auto px-8 py-4 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-sm font-bold text-slate-500 hover:text-slate-800 transition-all cursor-pointer"
-            >
-              ← Go Back
-            </button>
-            <button
-              type="button" 
-              disabled={
-                (selectedService === 'abortion' && !weeksPregnant) || 
-                (selectedService === 'testing' && !hasStiSymptoms) || 
-                (selectedService === 'contraceptive' && !contraceptiveUrgency) || 
-                (selectedService === 'pregnancy' && !pregnancyTestStatus) ||
-                (selectedService === 'mental' && !mentalHealthType) ||
-                (selectedService === 'gbv' && !gbvSupportPreference)
-              }
-              onClick={() => {
-                logToGoogleAnalytics(age, stateLocation, selectedService);
-                setScreen(4);
-              }}
-              className="w-full sm:w-auto bg-purple-600 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold py-4 px-8 rounded-xl shadow-md transition-all text-sm cursor-pointer"
-            >
-              Show My Safe Options ➔
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* --- SCREEN 4: FILTERABLE RESULTS INTERFACE --- */}
-      {screen === 4 && (
-        <div className="max-w-2xl mx-auto">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-black text-slate-900 mt-2">Your Verified Safe Safe-Spaces</h2>
-            <p className="text-sm text-slate-500 mt-1">Based on a {age}-year-old profile inside {stateLocation}.</p>
-          </div>
-
-          {/* --- HIGH VISIBILITY CO-LOCATED INSURANCE INTERCEPT BANNER --- */}
-          {insuranceFilter === 'insurance' && (
-            <div className="bg-indigo-50 border-2 border-indigo-500/80 p-4 rounded-2xl text-xs text-indigo-950 mb-4 font-medium leading-relaxed animate-fade-in shadow-sm shadow-indigo-100">
-              <span className="font-extrabold block text-sm text-indigo-700 mb-1">
-                ⚠️ Insurance Statement Warning:
-              </span>
-              Using parent or guardian insurance generates a physical paper statement—called an Explanation of Benefits (EOB)—sent to the primary policyholder’s home address detailing this visit. Consider selecting the **Free / Cash** filter below for completely off-the-record options.
-            </div>
-          )}
-
-          {/* --- STATE OVERRIDE LEGAL RESTRICTION BANNER NOTIFICATIONS --- */}
-          {Number(age) < 18 && highRestrictionStates.includes(stateLocation) && (
-            <>
+        {/* 🎯 DYNAMIC RESULTS & SUB-QUESTIONS PANEL */}
+        {selectedService && (
+          <div ref={resultsRef} className="w-full bg-white rounded-3xl shadow-md border border-slate-100 overflow-hidden animate-fade-in scroll-mt-24 flex flex-col md:flex-row">
+            
+            {/* ========================================================= */}
+            {/* LEFT COLUMN: FILTERS & CONTEXT BLOCKS                     */}
+            {/* ========================================================= */}
+            <div className="bg-[#F8F9FA] border-r border-slate-100 p-6 md:w-5/12 space-y-8">
+              
+              {/* Abortion Custom Descriptions */}
               {selectedService === 'abortion' && (
-                <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl text-xs text-amber-900 mb-4 leading-relaxed animate-fade-in">
-                  <span className="font-bold block mb-0.5">Youth Access Notice:</span>
-                  Because you are under 18 in {stateLocation}, local health clinics have strict parental consent or notification requirements. To keep you safe, we have hidden standard services that require parent signatures and highlighted alternative confidential pathways below.
-                </div>
-              )}
-              {selectedService === 'lgbtq' && (
-                <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl text-xs text-amber-900 mb-4 leading-relaxed animate-fade-in">
-                  <span className="font-bold block mb-0.5">Youth Identity Care Notice:</span>
-                  Because you are under 18 in {stateLocation}, local laws restrict certain physical youth identity services. To keep you safe, we have highlighted completely confidential, private digital communities and support networks below.
-                </div>
-              )}
-            </>
-          )}
-
-          {/* Interactive Filter Hub Row */}
-          <div className="bg-slate-50 border border-slate-100 p-5 rounded-2xl mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="space-y-1.5 w-full sm:w-auto">
-              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">How to get care:</span>
-              <div className="flex gap-1 bg-slate-200/60 p-1 rounded-xl">
-                {[
-                  { id: 'all', label: 'All types' },
-                  { id: 'mail', label: 'By Mail' },
-                  { id: 'in-person', label: 'In Person' }
-                ].map(b => (
-                  <button
-                    key={b.id} type="button" onClick={() => setDeliveryFilter(b.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${deliveryFilter === b.id ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                  >
-                    {b.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-1.5 w-full sm:w-auto">
-              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Payment setup:</span>
-              <div className="flex gap-1 bg-slate-200/60 p-1 rounded-xl">
-                {[
-                  { id: 'all', label: 'All costs' },
-                  { id: 'insurance', label: 'Takes Insurance' },
-                  { id: 'free-cash', label: 'Free / Cash' }
-                ].map(b => (
-                  <button
-                    key={b.id} type="button" onClick={() => setInsuranceFilter(b.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${insuranceFilter === b.id ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                  >
-                    {b.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Cards Stack Rendering Output */}
-          <div className="space-y-4">
-            {getRecommendations().length > 0 ? (
-              getRecommendations().map((rec, index) => (
-                <div key={index} className="p-6 bg-white border border-slate-100 rounded-2xl shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fade-in">
-                  <div className="max-w-md">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <h3 className="font-bold text-base text-slate-900 m-0">{rec.name}</h3>
-                      <span className="text-[10px] bg-slate-100 border border-slate-200/60 font-semibold px-2 py-0.5 rounded-full text-slate-500 uppercase tracking-wide">
-                        {rec.deliveryType === 'mail' ? 'Mail' : rec.deliveryType === 'in-person' ? 'Clinic' : 'Info'}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 leading-relaxed">{rec.desc}</p>
+                <div>
+                  <h3 className="text-xl font-black text-[#163D46] mb-4">How many weeks pregnant?</h3>
+                  <div className="flex flex-col gap-3">
+                    {[{ value: 'under10', label: 'Under 10 Weeks' }, { value: '10to15', label: '10 to 15 Weeks' }, { value: 'over15', label: 'Over 15 Weeks' }].map(opt => (
+                      <button
+                        key={opt.value} onClick={() => { setWeeksPregnant(opt.value); setDeliveryFilter(opt.value === 'under10' ? 'mail' : 'in-person'); }}
+                        className={`p-4 text-sm font-bold rounded-xl border-2 transition-all text-left cursor-pointer ${weeksPregnant === opt.value ? 'border-[#C8B4FA] bg-[#E0D4FD] text-[#163D46]' : 'border-gray-200 bg-white text-slate-600 hover:bg-slate-50'}`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
                   </div>
-                  <a 
-                    href={rec.link} target="_blank" rel="noopener noreferrer"
-                    className="bg-slate-900 hover:bg-purple-700 text-white text-xs font-bold py-3 px-5 rounded-xl shadow-sm inline-flex items-center justify-center shrink-0 tracking-wider uppercase transition-all"
-                  >
-                    Visit Site ➔
-                  </a>
-                </div>
-              ))
-            ) : (
-              <div className="text-center p-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                <h4 className="font-bold text-slate-700 mt-2">No matching resources found</h4>
-                <p className="text-xs text-slate-400 mt-1">Try resetting your filters above to explore open configurations.</p>
-              </div>
-            )}
-          </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10">
-            <button 
-              type="button" onClick={handleGoBack}
-              className="w-full sm:w-auto px-8 py-4 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-sm font-bold text-slate-500 hover:text-slate-800 transition-all cursor-pointer"
-            >
-              ← Adjust Questions
-            </button>
-            <button 
-              type="button" onClick={handleReset}
-              className="w-full sm:w-auto text-xs font-bold text-slate-400 hover:text-purple-600 uppercase tracking-widest transition-all cursor-pointer py-4 px-6"
-            >
-              Start Completely Over
-            </button>
+                  {/* RESTORED: Crucial Context Blocks */}
+                  {weeksPregnant === 'under10' && (
+                    <div className="mt-4 p-4 bg-purple-50 border border-purple-100 rounded-xl text-xs text-purple-900 leading-relaxed font-medium animate-fade-in">
+                      <span className="font-extrabold block text-sm mb-1 text-[#163D46]">✨ Recommended: Pills By Mail</span>
+                      At under 10 weeks, you are medically eligible for telehealth abortion medication options. We have automatically updated your filters to highlight discrete remote shipping services.
+                    </div>
+                  )}
+                  {(weeksPregnant === '10to15' || weeksPregnant === 'over15') && (
+                    <div className="mt-4 p-4 bg-amber-50 border border-amber-100 rounded-xl text-xs text-amber-900 leading-relaxed font-medium animate-fade-in">
+                      <span className="font-extrabold block text-sm mb-1 text-[#163D46]">🏥 Recommended: In-Person Care</span>
+                      At this gestational stage, care must be safely provided inside physical clinics. We have updated your filters to "In-Person" to hide out-of-date mail listings and ensure safe clinical access.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* STI Custom Descriptions */}
+              {selectedService === 'testing' && (
+                <div>
+                  <h3 className="text-xl font-black text-[#163D46] mb-4">Active physical symptoms?</h3>
+                  <div className="flex flex-col gap-3">
+                    {[{ value: 'yes', label: 'Yes, I feel symptoms' }, { value: 'no', label: 'No, routine checkup' }].map(opt => (
+                      <button
+                        key={opt.value} onClick={() => { setHasStiSymptoms(opt.value); setDeliveryFilter(opt.value === 'no' ? 'mail' : 'in-person'); }}
+                        className={`p-4 text-sm font-bold rounded-xl border-2 transition-all text-left cursor-pointer ${hasStiSymptoms === opt.value ? 'border-[#C8B4FA] bg-[#E0D4FD] text-[#163D46]' : 'border-gray-200 bg-white text-slate-600 hover:bg-slate-50'}`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  {/* RESTORED: Crucial Context Blocks */}
+                  {hasStiSymptoms === 'yes' && (
+                    <div className="mt-4 p-4 bg-purple-50 border border-purple-100 rounded-xl text-xs text-purple-900 leading-relaxed font-medium animate-fade-in">
+                      <span className="font-extrabold block text-sm mb-1 text-[#163D46]">🏥 Recommended: In-Person Testing</span>
+                      If you have active symptoms, we strongly recommend in-clinic testing for faster laboratory results and immediate treatment options. Your filters have been set to In-Person clinics.
+                    </div>
+                  )}
+                  {hasStiSymptoms === 'no' && (
+                    <div className="mt-4 p-4 bg-purple-50 border border-purple-100 rounded-xl text-xs text-purple-900 leading-relaxed font-medium animate-fade-in">
+                      <span className="font-extrabold block text-sm mb-1 text-[#163D46]">✨ Recommended: Home Test Kits</span>
+                      For routine wellness checkups without symptoms, at-home self-swab kits are a highly private and convenient option. Your filters have been pre-set to At Home.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Contraceptive Custom Descriptions */}
+              {selectedService === 'contraceptive' && (
+                <div>
+                  <h3 className="text-xl font-black text-[#163D46] mb-4">Need emergency Plan B?</h3>
+                  <div className="flex flex-col gap-3">
+                    {[{ value: 'emergency', label: 'Yes, emergency care needed' }, { value: 'routine', label: 'No, looking for routine control' }].map(opt => (
+                      <button
+                        key={opt.value} onClick={() => { setContraceptiveUrgency(opt.value); setDeliveryFilter(opt.value === 'emergency' ? 'mail' : 'in-person'); }}
+                        className={`p-4 text-sm font-bold rounded-xl border-2 transition-all text-left cursor-pointer ${contraceptiveUrgency === opt.value ? 'border-[#C8B4FA] bg-[#E0D4FD] text-[#163D46]' : 'border-gray-200 bg-white text-slate-600 hover:bg-slate-50'}`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  {/* RESTORED: Crucial Context Blocks */}
+                  {contraceptiveUrgency === 'emergency' && (
+                    <div className="mt-4 p-4 bg-purple-50 border border-purple-100 rounded-xl text-xs text-purple-900 leading-relaxed font-medium animate-fade-in">
+                      <span className="font-extrabold block text-sm mb-1 text-[#163D46]">⚡ Prioritizing: Fast Emergency Access</span>
+                      For recent accidents, time is critical. We are prioritizing immediate over-the-counter morning-after emergency pills or discrete overnight delivery networks.
+                    </div>
+                  )}
+                  {contraceptiveUrgency === 'routine' && (
+                    <div className="mt-4 p-4 bg-purple-50 border border-purple-100 rounded-xl text-xs text-purple-900 leading-relaxed font-medium animate-fade-in">
+                      <span className="font-extrabold block text-sm mb-1 text-[#163D46]">🩺 Prioritizing: Ongoing Management</span>
+                      For continuous pregnancy prevention, we emphasize confidential family planning clinics or low-cost online prescriptions for standard birth control options.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* UN-SQUEEZED FILTER CARDS */}
+              <div className="pt-4 border-t border-slate-200">
+                <h3 className="text-sm font-black uppercase text-[#163D46] tracking-wider mb-4">How to get care</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <button 
+                    onClick={() => setDeliveryFilter('in-person')} 
+                    className={`p-4 rounded-xl border-2 flex flex-col items-start gap-2 transition-all cursor-pointer ${deliveryFilter === 'in-person' ? 'border-[#C8B4FA] bg-[#E0D4FD] text-[#163D46]' : 'border-gray-200 bg-white text-slate-600'}`}
+                  >
+                    <span className="text-xl">🚑</span>
+                    <span className="text-sm font-bold mt-1">In-Person</span>
+                  </button>
+                  <button 
+                    onClick={() => setDeliveryFilter('mail')} 
+                    className={`p-4 rounded-xl border-2 flex flex-col items-start gap-2 transition-all cursor-pointer ${deliveryFilter === 'mail' ? 'border-[#C8B4FA] bg-[#E0D4FD] text-[#163D46]' : 'border-gray-200 bg-white text-slate-600'}`}
+                  >
+                    <span className="text-xl">🏠</span>
+                    <span className="text-sm font-bold mt-1">At Home</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button 
+                  onClick={() => setInsuranceFilter(insuranceFilter === 'free-cash' ? 'all' : 'free-cash')} 
+                  className={`w-full p-4 rounded-xl border-2 flex items-center gap-3 transition-all cursor-pointer ${insuranceFilter === 'free-cash' ? 'border-[#C8B4FA] bg-[#E0D4FD]' : 'border-gray-200 bg-white'}`}
+                >
+                  <div className={`w-5 h-5 border-2 rounded flex items-center justify-center ${insuranceFilter === 'free-cash' ? 'border-[#163D46] bg-[#163D46]' : 'border-slate-300 bg-white'}`}>
+                    {insuranceFilter === 'free-cash' && <span className="text-white text-xs">✓</span>}
+                  </div>
+                  <span className={`text-sm font-bold ${insuranceFilter === 'free-cash' ? 'text-[#163D46]' : 'text-slate-600'}`}>Free / Cash services only</span>
+                </button>
+              </div>
+
+              {/* HIGH VISIBILITY INSURANCE EOB BANNER */}
+              {insuranceFilter !== 'free-cash' && (
+                <div className="mt-4 bg-indigo-50 border border-indigo-200 p-4 rounded-xl text-xs text-indigo-950 font-medium leading-relaxed shadow-sm">
+                  <span className="font-extrabold block text-indigo-800 mb-0.5 text-sm">⚠️ Insurance Warning:</span>
+                  Using parent insurance generates a physical paper statement (EOB) sent home. Select "Free / Cash services only" above for completely off-the-record options.
+                </div>
+              )}
+            </div>
+
+            {/* ========================================================= */}
+            {/* RIGHT COLUMN: RESULTS FEED DIRECTORY                      */}
+            {/* ========================================================= */}
+            <div className="p-6 bg-white md:w-7/12 flex flex-col relative">
+              
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+                <h3 className="text-sm font-black uppercase text-[#163D46] tracking-wider">Matching Providers</h3>
+                <span className="text-[10px] font-bold bg-[#E0D4FD] text-[#163D46] px-3 py-1 rounded-full uppercase">{activeResources.length} Found</span>
+              </div>
+
+              {/* State Override Legal Restriction Banner */}
+              {Number(age) < 18 && HIGH_RESTRICTION_STATES.includes(stateLocation) && (
+                <>
+                  {selectedService === 'abortion' && (
+                    <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl text-xs text-amber-900 leading-relaxed font-medium mb-4">
+                      <span className="font-bold block mb-1 text-sm">Youth Access Notice:</span>
+                      Because you are under 18 in {stateLocation}, local health clinics have strict parental notification laws. To protect you, we have hidden standard services that require parent signatures and highlighted alternative confidential pathways below.
+                    </div>
+                  )}
+                  {selectedService === 'lgbtq' && (
+                    <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl text-xs text-amber-900 leading-relaxed font-medium mb-4">
+                      <span className="font-bold block mb-1 text-sm">Identity Care Notice:</span>
+                      Because you are under 18 in {stateLocation}, local laws restrict physical identity services. We have highlighted completely confidential, private digital networks below.
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* 🔄 Render Cards with an animation key so users visually see the list refresh when they type a new age/state */}
+              <div key={refreshTriggerKey} className="flex flex-col gap-3 overflow-y-auto max-h-[600px] pr-2 animate-fade-in">
+                {activeResources.length > 0 ? (
+                  activeResources.map((fac, idx) => (
+                    <div key={idx} className="p-5 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow flex flex-col gap-3">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <h4 className="font-extrabold text-base text-[#163D46]">{fac?.name || 'Vetted Care Network'}</h4>
+                        </div>
+                        <p className="text-sm text-slate-500 leading-relaxed">{fac?.desc || ''}</p>
+                      </div>
+                      <div className="flex items-center justify-between mt-2 pt-3 border-t border-gray-50">
+                        <span className="text-[10px] bg-[#FDF8F8] border border-gray-100 text-slate-600 font-bold px-2.5 py-1 rounded-md uppercase tracking-wider">
+                          {fac?.deliveryType === 'mail' ? 'At Home (Mail)' : fac?.deliveryType === 'in-person' ? 'In-Person' : 'Information'}
+                        </span>
+                        <a 
+                          href={fac?.link || '#'} target="_blank" rel="noopener noreferrer" 
+                          className="bg-[#E0D4FD] hover:bg-[#C8B4FA] text-[#163D46] text-xs font-black py-2.5 px-6 rounded-xl transition-all text-center cursor-pointer"
+                        >
+                          Visit
+                        </a>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center p-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200 mt-4">
+                    <p className="text-base font-bold text-[#163D46]">No exact matches found</p>
+                    <p className="text-sm text-[#5F737B] mt-1">Try adjusting your "How to get care" filters on the left.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 🆘 MASTER EMERGENCY HELPLINES (Always highly visible, matching "In case of crisis:" from reference) */}
+        <div className="w-full max-w-4xl pt-8 mt-4 border-t border-slate-200">
+          <div className="px-1 text-left mb-4">
+            <h3 className="text-lg font-black text-[#163D46] flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
+              In case of crisis:
+            </h3>
+            <p className="text-sm text-[#5F737B] mt-1">If you are in an urgent crisis, we have compiled a list of immediate, confidential helplines that do not require parental permission.</p>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {MASTER_HELPLINES.map((line, lIdx) => (
+              <div key={lIdx} className="p-5 bg-white border border-red-100 rounded-2xl flex flex-col justify-between gap-4 shadow-sm hover:shadow-md transition-all">
+                <div className="space-y-1">
+                  <h4 className="font-extrabold text-base text-[#163D46]">{line.name}</h4>
+                  <p className="text-sm text-[#5F737B] leading-relaxed">{line.desc}</p>
+                </div>
+                <div className="bg-red-50/70 border border-red-100 rounded-xl p-3 text-center">
+                  <span className="text-sm font-black text-red-600 select-all tracking-wide">{line.contact}</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-      )}
 
+      </div>
     </div>
-  )
+  );
 }

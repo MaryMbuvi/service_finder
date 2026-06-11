@@ -22,7 +22,17 @@ export const masterResources = [
     subType: "all",
     deliveryType: "in-person",
     costType: "all",
-    requiresParentalConsent: false // Overridden by AppV2 code block logic for minor states
+    requiresParentalConsent: false 
+  },
+  {
+    name: "Main Street Women's Health (Example Clinic)",
+    desc: "A traditional OB/GYN clinic offering in-person procedural care. Requires private health insurance on file for appointment booking and billing.",
+    link: "#",
+    category: "abortion",
+    subType: "all",
+    deliveryType: "in-person",
+    costType: "insurance", // Added to demonstrate insurance filtering
+    requiresParentalConsent: true
   },
   {
     name: "Abortion Finder National Directory",
@@ -40,7 +50,7 @@ export const masterResources = [
     link: "https://mahotline.org",
     category: "abortion",
     subType: "all",
-    deliveryType: "mail", // Remote/text consultation
+    deliveryType: "mail", 
     costType: "free-cash",
     requiresParentalConsent: false
   },
@@ -53,9 +63,19 @@ export const masterResources = [
     desc: "Fully private, discrete at-home self-swab testing kits shipped blind in completely plain unbranded mailboxes with anonymous online digital tracking keys.",
     link: "https://takemehome.org",
     category: "testing",
-    subType: "no", // Routes to regular checkups (No active symptoms)
+    subType: "no", 
     deliveryType: "mail",
     costType: "free-cash",
+    requiresParentalConsent: false
+  },
+  {
+    name: "CityWell Clinical Labs (Example Lab)",
+    desc: "A standard medical laboratory providing comprehensive STI panels. Requires health insurance for billing and processes claims through primary care networks (Generates EOB statement).",
+    link: "#",
+    category: "testing",
+    subType: "yes", 
+    deliveryType: "in-person",
+    costType: "insurance", // Added to demonstrate insurance filtering
     requiresParentalConsent: false
   },
   {
@@ -63,7 +83,7 @@ export const masterResources = [
     desc: "Provides rapid walk-in diagnostic testing, professional clinical swabbing, and physical prescription tracking for immediate therapeutic relief and symptom management.",
     link: "https://www.plannedparenthood.org",
     category: "testing",
-    subType: "yes", // Routes to active symptoms
+    subType: "yes", 
     deliveryType: "in-person",
     costType: "all",
     requiresParentalConsent: false
@@ -103,6 +123,16 @@ export const masterResources = [
     requiresParentalConsent: false
   },
   {
+    name: "Nurx Premium Care (Example Service)",
+    desc: "Online prescription platform that bills your primary health insurance for daily birth control delivery. Note: Insurance statements will be mailed to the primary policyholder.",
+    link: "#",
+    category: "contraceptive",
+    subType: "routine",
+    deliveryType: "mail",
+    costType: "insurance", // Added to demonstrate insurance filtering
+    requiresParentalConsent: false
+  },
+  {
     name: "Twentyeight Health Delivery",
     desc: "An affordable online prescription and mail-delivery hub that ships continuous birth control pills, rings, and emergency morning-after packages in unmarked wrappers.",
     link: "https://www.twentyeighthealth.com",
@@ -120,7 +150,7 @@ export const masterResources = [
     subType: "routine",
     deliveryType: "in-person",
     costType: "free-cash",
-    requiresParentalConsent: false // Federal Title X clinics legally protect minor confidentiality without parent notice
+    requiresParentalConsent: false 
   },
   {
     name: "Emergency Contraception Website (Not-2-Late)",
@@ -152,7 +182,7 @@ export const masterResources = [
     link: "https://www.all-options.org",
     category: "pregnancy",
     subType: "already-positive",
-    deliveryType: "mail", // Remote counseling support
+    deliveryType: "mail", 
     costType: "free-cash",
     requiresParentalConsent: false
   },
@@ -216,8 +246,8 @@ export const masterResources = [
     link: "https://www.folxhealth.com",
     category: "lgbtq",
     subType: "all",
-    deliveryType: "in-person", // Filtered out automatically for red-zone minors in engine pipeline
-    costType: "all",
+    deliveryType: "in-person", 
+    costType: "insurance", // Updated to reflect insurance/paid models
     requiresParentalConsent: true
   },
 
