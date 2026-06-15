@@ -133,24 +133,14 @@ export const masterResources = [
     requiresParentalConsent: false
   },
   {
-    name: "Title X National Family Planning Clinics",
-    desc: "A network of federally funded clinics providing confidential, sliding-scale, or completely free ongoing birth control paths, patches, shots, and implants specifically to minors.",
-    link: "https://opa-fpclinicfinder.hhs.gov",
+    name: "Planned Parenthood Health Centers",
+    desc: "A highly trusted, youth-friendly network of clinics. They operate on a sliding scale, meaning you can often get completely free or low-cost birth control prescriptions in-person without ever needing parent insurance.",
+    link: "https://www.plannedparenthood.org/health-center",
     category: "contraceptive",
     subType: "routine",
     deliveryType: "in-person",
     costType: "free-cash",
     requiresParentalConsent: false 
-  },
-  {
-    name: "Emergency Contraception Website (Not-2-Late)",
-    desc: "The ultimate emergency resource database tracking exactly where to locate over-the-counter morning-after options within your zip code within the 5-day protection window.",
-    link: "https://ec.princeton.edu",
-    category: "contraceptive",
-    subType: "emergency",
-    deliveryType: "all",
-    costType: "free-cash",
-    requiresParentalConsent: false
   },
 
   // ============================================================
