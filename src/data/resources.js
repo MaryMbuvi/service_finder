@@ -57,18 +57,8 @@ export const masterResources = [
 
   // ============================================================
   // 2. STI DIAGNOSTICS & TESTING
-  // ============================================================
-  {
-    name: "TakeMeHome Home Diagnostic Kits",
-    desc: "Fully private, discrete at-home self-swab testing kits shipped blind in completely plain unbranded mailboxes with anonymous online digital tracking keys.",
-    link: "https://takemehome.org",
-    category: "testing",
-    subType: "no", 
-    deliveryType: "mail",
-    costType: "free-cash",
-    requiresParentalConsent: false
-  },
-  {
+  // ============================================================ 
+ {
     name: "CityWell Clinical Labs (Example Lab)",
     desc: "A standard medical laboratory providing comprehensive STI panels. Requires health insurance for billing and processes claims through primary care networks (Generates EOB statement).",
     link: "#",

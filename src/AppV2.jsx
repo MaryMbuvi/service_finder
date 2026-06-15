@@ -16,10 +16,10 @@ const MASTER_HELPLINES = [
 ];
 
 const SERVICES = [
-  { id: 'abortion', name: 'Abortion' },
+  { id: 'abortion', name: 'Abortion Options' },
   { id: 'testing', name: 'STI Testing' },
   { id: 'contraceptive', name: 'Birth Control' },
-  { id: 'pregnancy', name: 'Pregnancy' },
+  { id: 'pregnancy', name: 'Pregnancy Testing' },
   { id: 'lgbtq', name: 'LGBTQ+ Resources' },
   { id: 'mental', name: 'Mental Health' },
   { id: 'gbv', name: 'Safety & Abuse Support' }
@@ -29,6 +29,7 @@ export default function AppV2() {
   // Core Profile
   const [age, setAge] = useState('');
   const [stateLocation, setStateLocation] = useState('');
+  const [missingDetails, setMissingDetails] = useState(false); 
   
   // Service Navigation
   const [selectedService, setSelectedService] = useState(null);
@@ -46,6 +47,22 @@ export default function AppV2() {
   const [insuranceFilter, setInsuranceFilter] = useState('all');
 
   const resultsRef = useRef(null);
+  const detailsRef = useRef(null);
+
+  // 🚀 THE URL LISTENER (Catches data from the FAQ App)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const passedService = params.get('service');
+    const passedAge = params.get('age');
+    const passedState = params.get('state');
+
+    if (passedAge) setAge(passedAge);
+    if (passedState) setStateLocation(passedState);
+    if (passedService) {
+      setSelectedService(passedService);
+      setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
+    }
+  }, []);
 
   // Privacy-Safe GA Logger
   const logToGoogleAnalytics = (finalAge, finalState, finalService) => {
@@ -65,12 +82,21 @@ export default function AppV2() {
   };
 
   const handleServiceClick = (serviceId) => {
+    // 🛑 MANDATORY CHECK: Prevent them from proceeding without Age & State
+    if (!age || !stateLocation) {
+      setMissingDetails(true);
+      detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    setMissingDetails(false);
+
     if (selectedService === serviceId) {
       setSelectedService(null); 
     } else {
       setSelectedService(serviceId);
       
-      // Reset sub-questions when changing categories so old filters don't pollute the new search
+      // Reset sub-questions when changing categories
       setWeeksPregnant('');
       setHasStiSymptoms('');
       setContraceptiveUrgency('');
@@ -146,7 +172,6 @@ export default function AppV2() {
 
   }, [selectedService, age, stateLocation, weeksPregnant, hasStiSymptoms, contraceptiveUrgency, pregnancyTestStatus, mentalHealthType, gbvSupportPreference, deliveryFilter, insuranceFilter]);
 
-  // A composite string to trigger a visual re-render animation in the results box when core info changes
   const refreshTriggerKey = `${age}-${stateLocation}-${deliveryFilter}-${insuranceFilter}`;
 
   return (
@@ -159,31 +184,61 @@ export default function AppV2() {
             Service Finder
           </h1>
         </div>
-        <button 
-          onClick={triggerQuickEscape}
-          className="bg-red-400 hover:bg-red-500 text-white text-[10px] sm:text-xs font-black px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl uppercase tracking-wider transition-all shadow-sm active:scale-95 flex items-center gap-1.5 cursor-pointer"
-        >
-          <span className="text-sm">⚡</span> Quick Escape
-        </button>
+        <div className="flex items-center gap-3">
+          <a href="https://chatbot-zeta-seven-54.vercel.app/" className="hidden sm:block text-xs font-bold text-[#5F737B] hover:text-[#163D46] transition-colors">
+            Read FAQs
+          </a>
+          <button 
+            onClick={triggerQuickEscape}
+            className="bg-red-400 hover:bg-red-500 text-white text-[10px] sm:text-xs font-black px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl uppercase tracking-wider transition-all shadow-sm active:scale-95 flex items-center gap-1.5 cursor-pointer"
+          >
+            <span className="text-sm">⚡</span> Quick Escape
+          </button>
+        </div>
       </div>
 
       <div className="w-full max-w-5xl mx-auto px-4 mt-8 space-y-8 flex flex-col items-center">
 
-        {/* 📋 INLINE CONTEXT BAR */}
-        <div className="w-full max-w-4xl bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        {/* 🔒 HONEST & REASSURING PRIVACY BANNER */}
+        <div className="w-full max-w-4xl bg-purple-50 border border-purple-100 p-5 rounded-2xl flex items-start gap-4 text-sm text-purple-900 leading-relaxed shadow-sm">
+          <span className="text-2xl">🔒</span>
+          <div>
+            <span className="font-extrabold text-base block mb-0.5 text-[#163D46]">You are safe and anonymous here.</span>
+            We never ask for your name, phone number, or who you are. We only use your age and state to show you the right legal options and to understand which regions need the most help. Your personal identity is completely hidden.
+          </div>
+        </div>
+
+        {/* 📋 INLINE CONTEXT BAR (Mandatory Fields) */}
+        <div 
+          ref={detailsRef}
+          className={`w-full max-w-4xl bg-white p-5 rounded-2xl shadow-sm border transition-all duration-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
+            missingDetails ? 'border-red-400 ring-4 ring-red-50' : 'border-slate-100'
+          }`}
+        >
           <div className="flex-1">
-            <h3 className="text-sm font-black text-[#163D46] uppercase tracking-wider">Your Details</h3>
-            <p className="text-[11px] text-[#5F737B] mt-0.5 leading-snug">Entering this auto-filters clinics to match local laws.</p>
+            <h3 className="text-sm font-black text-[#163D46] uppercase tracking-wider flex items-center gap-2">
+              Your Details
+              {missingDetails && <span className="text-[10px] text-red-500 bg-red-50 px-2 py-0.5 rounded-md font-bold normal-case">Required</span>}
+            </h3>
+            <p className={`text-[11px] mt-0.5 leading-snug ${missingDetails ? 'text-red-500 font-medium' : 'text-[#5F737B]'}`}>
+              Entering this accurately auto-filters clinics to match the healthcare laws in your state.
+            </p>
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
             <input 
-              taype="number" placeholder="Age" min="12" max="110" 
-              value={age} onChange={(e) => setAge(e.target.value)} 
-              className="w-20 p-3 text-sm font-bold bg-[#FDF8F8] border border-gray-200 rounded-xl text-[#163D46] focus:outline-none focus:border-[#C8B4FA] focus:bg-white transition-all text-center" 
+              type="number" placeholder="Age" min="12" max="110" 
+              value={age} 
+              onChange={(e) => { setAge(e.target.value); setMissingDetails(false); }} 
+              className={`w-20 p-3 text-sm font-bold bg-[#FDF8F8] border rounded-xl text-[#163D46] focus:outline-none focus:bg-white transition-all text-center ${
+                missingDetails && !age ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-[#C8B4FA]'
+              }`} 
             />
             <select 
-              value={stateLocation} onChange={(e) => setStateLocation(e.target.value)}
-              className="flex-1 sm:w-48 p-3 text-sm font-bold bg-[#FDF8F8] border border-gray-200 rounded-xl text-[#163D46] focus:outline-none focus:border-[#C8B4FA] focus:bg-white transition-all cursor-pointer"
+              value={stateLocation} 
+              onChange={(e) => { setStateLocation(e.target.value); setMissingDetails(false); }}
+              className={`flex-1 sm:w-48 p-3 text-sm font-bold bg-[#FDF8F8] border rounded-xl text-[#163D46] focus:outline-none focus:bg-white transition-all cursor-pointer ${
+                missingDetails && !stateLocation ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-[#C8B4FA]'
+              }`}
             >
               <option value="">Select State...</option>
               {US_STATES.map(st => <option key={st} value={st}>{st}</option>)}
@@ -212,7 +267,7 @@ export default function AppV2() {
         </div>
 
         {/* 🎯 DYNAMIC RESULTS & SUB-QUESTIONS PANEL */}
-        {selectedService && (
+        {selectedService && age && stateLocation && (
           <div ref={resultsRef} className="w-full bg-white rounded-3xl shadow-md border border-slate-100 overflow-hidden animate-fade-in scroll-mt-24 flex flex-col md:flex-row">
             
             {/* ========================================================= */}
@@ -235,7 +290,6 @@ export default function AppV2() {
                     ))}
                   </div>
 
-                  {/* RESTORED: Crucial Context Blocks */}
                   {weeksPregnant === 'under10' && (
                     <div className="mt-4 p-4 bg-purple-50 border border-purple-100 rounded-xl text-xs text-purple-900 leading-relaxed font-medium animate-fade-in">
                       <span className="font-extrabold block text-sm mb-1 text-[#163D46]">✨ Recommended: Pills By Mail</span>
@@ -266,7 +320,6 @@ export default function AppV2() {
                     ))}
                   </div>
                   
-                  {/* RESTORED: Crucial Context Blocks */}
                   {hasStiSymptoms === 'yes' && (
                     <div className="mt-4 p-4 bg-purple-50 border border-purple-100 rounded-xl text-xs text-purple-900 leading-relaxed font-medium animate-fade-in">
                       <span className="font-extrabold block text-sm mb-1 text-[#163D46]">🏥 Recommended: In-Person Testing</span>
@@ -297,7 +350,6 @@ export default function AppV2() {
                     ))}
                   </div>
                   
-                  {/* RESTORED: Crucial Context Blocks */}
                   {contraceptiveUrgency === 'emergency' && (
                     <div className="mt-4 p-4 bg-purple-50 border border-purple-100 rounded-xl text-xs text-purple-900 leading-relaxed font-medium animate-fade-in">
                       <span className="font-extrabold block text-sm mb-1 text-[#163D46]">⚡ Prioritizing: Fast Emergency Access</span>
@@ -390,7 +442,7 @@ export default function AppV2() {
                     <div key={idx} className="p-5 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow flex flex-col gap-3">
                       <div>
                         <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <h4 className="font-extrabold text-base text-[#163D46]">{fac?.name || 'Vetted Care Network'}</h4>
+                          <h4 className="font-extrabold text-base text-[#163D46]">{fac?.name || 'Care Network'}</h4>
                         </div>
                         <p className="text-sm text-slate-500 leading-relaxed">{fac?.desc || ''}</p>
                       </div>
@@ -418,7 +470,7 @@ export default function AppV2() {
           </div>
         )}
 
-        {/* 🆘 MASTER EMERGENCY HELPLINES (Always highly visible, matching "In case of crisis:" from reference) */}
+        {/* 🆘 MASTER EMERGENCY HELPLINES */}
         <div className="w-full max-w-4xl pt-8 mt-4 border-t border-slate-200">
           <div className="px-1 text-left mb-4">
             <h3 className="text-lg font-black text-[#163D46] flex items-center gap-2">
