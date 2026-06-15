@@ -177,7 +177,7 @@ export default function AppV2() {
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
             <input 
-              type="number" placeholder="Age" min="12" max="110" 
+              taype="number" placeholder="Age" min="12" max="110" 
               value={age} onChange={(e) => setAge(e.target.value)} 
               className="w-20 p-3 text-sm font-bold bg-[#FDF8F8] border border-gray-200 rounded-xl text-[#163D46] focus:outline-none focus:border-[#C8B4FA] focus:bg-white transition-all text-center" 
             />
@@ -361,7 +361,7 @@ export default function AppV2() {
             <div className="p-6 bg-white md:w-7/12 flex flex-col relative">
               
               <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
-                <h3 className="text-sm font-black uppercase text-[#163D46] tracking-wider">Matching Providers</h3>
+                <h3 className="text-sm font-black uppercase text-[#163D46] tracking-wider">Recommended Providers</h3>
                 <span className="text-[10px] font-bold bg-[#E0D4FD] text-[#163D46] px-3 py-1 rounded-full uppercase">{activeResources.length} Found</span>
               </div>
 
