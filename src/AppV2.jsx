@@ -27,7 +27,7 @@ const SERVICES = [
 
 export default function AppV2() {
   // Core Profile
-  const [age, setAge] = useState('');
+  const [ageGroup, setAgeGroup] = useState(''); // 'under_18' or '18_plus'
   const [stateLocation, setStateLocation] = useState('');
   const [missingDetails, setMissingDetails] = useState(false); 
   
@@ -49,41 +49,41 @@ export default function AppV2() {
   const resultsRef = useRef(null);
   const detailsRef = useRef(null);
 
-  // 🚀 THE URL LISTENER (Catches data from the FAQ App)
+  // 🚀 THE URL LISTENER
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const passedService = params.get('service');
     const passedAge = params.get('age');
     const passedState = params.get('state');
 
-    if (passedAge) setAge(passedAge);
+    if (passedAge) {
+      if (passedAge === 'under_18' || passedAge === '18_plus') {
+        setAgeGroup(passedAge);
+      } else if (!isNaN(passedAge)) {
+        setAgeGroup(Number(passedAge) < 18 ? 'under_18' : '18_plus');
+      }
+    }
+    
     if (passedState) setStateLocation(passedState);
+    
     if (passedService) {
       setSelectedService(passedService);
       setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
     }
   }, []);
 
-  // Privacy-Safe GA Logger
-  const logToGoogleAnalytics = (finalAge, finalState, finalService) => {
-    let ageRange = 'Under 15';
-    const numericAge = Number(finalAge);
-    if (numericAge >= 15 && numericAge <= 17) ageRange = '15-17';
-    else if (numericAge >= 18 && numericAge <= 21) ageRange = '18-21';
-    else if (numericAge > 21) ageRange = '22+';
-
+  const logToGoogleAnalytics = (finalAgeGroup, finalState, finalService) => {
     if (typeof window.gtag !== 'undefined') {
       window.gtag('event', 'resource_search', {
         'user_state': finalState || 'unspecified',
-        'user_age_group': finalAge ? ageRange : 'unspecified',
+        'user_age_group': finalAgeGroup || 'unspecified',
         'service_type': finalService,
       });
     }
   };
 
   const handleServiceClick = (serviceId) => {
-    // 🛑 MANDATORY CHECK: Prevent them from proceeding without Age & State
-    if (!age || !stateLocation) {
+    if (!ageGroup || !stateLocation) {
       setMissingDetails(true);
       detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
@@ -96,7 +96,6 @@ export default function AppV2() {
     } else {
       setSelectedService(serviceId);
       
-      // Reset sub-questions when changing categories
       setWeeksPregnant('');
       setHasStiSymptoms('');
       setContraceptiveUrgency('');
@@ -106,7 +105,9 @@ export default function AppV2() {
       setDeliveryFilter('all');
       setInsuranceFilter('all');
 
-      logToGoogleAnalytics(age, stateLocation, serviceId);
+      const readableAge = ageGroup === 'under_18' ? 'Under 18' : '18 or older';
+      logToGoogleAnalytics(readableAge, stateLocation, serviceId);
+      
       setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
     }
   };
@@ -122,7 +123,7 @@ export default function AppV2() {
     const rawData = Array.isArray(masterResources) ? masterResources : [];
     let list = [...rawData];
 
-    const isMinor = age !== '' && Number(age) < 18;
+    const isMinor = ageGroup === 'under_18';
     const isRestrictedZone = stateLocation !== '' && HIGH_RESTRICTION_STATES.includes(stateLocation);
 
     list = list.filter(item => item?.category === 'all' || item?.category === selectedService);
@@ -158,8 +159,9 @@ export default function AppV2() {
 
     list = list.map(item => {
       let finalUrl = item?.link || '#';
-      if ((item?.link?.includes('ineedana.com') || item?.link?.includes('abortionfinder.org')) && age && stateLocation) {
-        finalUrl = `${item.link}/search?age=${age}&state=${stateLocation}`;
+      if ((item?.link?.includes('ineedana.com') || item?.link?.includes('abortionfinder.org')) && ageGroup && stateLocation) {
+        const proxyAge = ageGroup === 'under_18' ? 16 : 22;
+        finalUrl = `${item.link}/search?age=${proxyAge}&state=${stateLocation}`;
       }
       return { ...item, link: finalUrl };
     });
@@ -170,9 +172,9 @@ export default function AppV2() {
       return matchesDelivery && matchesCost;
     });
 
-  }, [selectedService, age, stateLocation, weeksPregnant, hasStiSymptoms, contraceptiveUrgency, pregnancyTestStatus, mentalHealthType, gbvSupportPreference, deliveryFilter, insuranceFilter]);
+  }, [selectedService, ageGroup, stateLocation, weeksPregnant, hasStiSymptoms, contraceptiveUrgency, pregnancyTestStatus, mentalHealthType, gbvSupportPreference, deliveryFilter, insuranceFilter]);
 
-  const refreshTriggerKey = `${age}-${stateLocation}-${deliveryFilter}-${insuranceFilter}`;
+  const refreshTriggerKey = `${ageGroup}-${stateLocation}-${deliveryFilter}-${insuranceFilter}`;
 
   return (
     <div className="bg-[#FDF8F8] min-h-screen font-sans text-slate-800 antialiased relative pb-20">
@@ -208,41 +210,90 @@ export default function AppV2() {
           </div>
         </div>
 
-        {/* 📋 INLINE CONTEXT BAR (Mandatory Fields) */}
+        {/* 📋 INLINE CONTEXT BAR (With Specific Error Warnings) */}
         <div 
           ref={detailsRef}
-          className={`w-full max-w-4xl bg-white p-5 rounded-2xl shadow-sm border transition-all duration-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
+          className={`w-full max-w-4xl bg-white p-5 sm:p-6 rounded-2xl shadow-sm border transition-all duration-300 flex flex-col gap-5 ${
             missingDetails ? 'border-red-400 ring-4 ring-red-50' : 'border-slate-100'
           }`}
         >
-          <div className="flex-1">
+          <div>
             <h3 className="text-sm font-black text-[#163D46] uppercase tracking-wider flex items-center gap-2">
               Your Details
-              {missingDetails && <span className="text-[10px] text-red-500 bg-red-50 px-2 py-0.5 rounded-md font-bold normal-case">Required</span>}
             </h3>
-            <p className={`text-[11px] mt-0.5 leading-snug ${missingDetails ? 'text-red-500 font-medium' : 'text-[#5F737B]'}`}>
-              Entering this accurately auto-filters clinics to match the healthcare laws in your state.
-            </p>
+            
+            {/* Dynamic Specific Warning Messages */}
+            {missingDetails ? (
+              <p className="text-[12px] mt-1 leading-snug text-red-500 font-bold flex items-center gap-1 animate-fade-in">
+                <span>⚠️</span>
+                {!ageGroup && !stateLocation 
+                  ? "Please select your age group and state to view services." 
+                  : !ageGroup 
+                    ? "Please select your age group to view services." 
+                    : "Please select your state to view services."}
+              </p>
+            ) : (
+              <p className="text-[11px] mt-0.5 leading-snug text-[#5F737B]">
+                Entering this accurately auto-filters clinics to match the healthcare laws in your state.
+              </p>
+            )}
           </div>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <input 
-              type="number" placeholder="Age" min="12" max="110" 
-              value={age} 
-              onChange={(e) => { setAge(e.target.value); setMissingDetails(false); }} 
-              className={`w-20 p-3 text-sm font-bold bg-[#FDF8F8] border rounded-xl text-[#163D46] focus:outline-none focus:bg-white transition-all text-center ${
-                missingDetails && !age ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-[#C8B4FA]'
-              }`} 
-            />
-            <select 
-              value={stateLocation} 
-              onChange={(e) => { setStateLocation(e.target.value); setMissingDetails(false); }}
-              className={`flex-1 sm:w-48 p-3 text-sm font-bold bg-[#FDF8F8] border rounded-xl text-[#163D46] focus:outline-none focus:bg-white transition-all cursor-pointer ${
-                missingDetails && !stateLocation ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-[#C8B4FA]'
-              }`}
-            >
-              <option value="">Select State...</option>
-              {US_STATES.map(st => <option key={st} value={st}>{st}</option>)}
-            </select>
+          
+          <div className="flex flex-col sm:flex-row gap-5 w-full">
+            
+            {/* SEGMENTED CONTROL: SINGLE-TAP AGE TOGGLE */}
+            <div className="w-full sm:w-1/2 flex flex-col gap-1.5">
+              <span className={`text-[10px] font-bold uppercase tracking-wider pl-1 transition-colors ${missingDetails && !ageGroup ? 'text-red-500' : 'text-slate-400'}`}>
+                Select your age group:
+              </span>
+              <div className={`grid grid-cols-2 p-1 bg-[#FDF8F8] border rounded-xl transition-all w-full ${missingDetails && !ageGroup ? 'border-red-400 bg-red-50' : 'border-gray-200'}`}>
+                <button 
+                  onClick={() => { setAgeGroup('under_18'); setMissingDetails(false); }}
+                  className={`py-3 px-2 text-xs sm:text-sm font-bold rounded-lg transition-all duration-200 cursor-pointer ${
+                    ageGroup === 'under_18' 
+                      ? 'bg-[#163D46] text-white shadow-sm transform scale-[0.98]' 
+                      : 'text-[#5F737B] hover:text-[#163D46] hover:bg-white'
+                  }`}
+                >
+                  Under 18
+                </button>
+                <button 
+                  onClick={() => { setAgeGroup('18_plus'); setMissingDetails(false); }}
+                  className={`py-3 px-2 text-xs sm:text-sm font-bold rounded-lg transition-all duration-200 cursor-pointer ${
+                    ageGroup === '18_plus' 
+                      ? 'bg-[#163D46] text-white shadow-sm transform scale-[0.98]' 
+                      : 'text-[#5F737B] hover:text-[#163D46] hover:bg-white'
+                  }`}
+                >
+                  18 or older
+                </button>
+              </div>
+            </div>
+
+            {/* CUSTOM MOBILE-FRIENDLY STATE DROPDOWN */}
+            <div className="w-full sm:w-1/2 flex flex-col gap-1.5">
+              <span className={`text-[10px] font-bold uppercase tracking-wider pl-1 transition-colors ${missingDetails && !stateLocation ? 'text-red-500' : 'text-slate-400'}`}>
+                Select your state:
+              </span>
+              <div className="relative w-full">
+                <select 
+                  value={stateLocation} 
+                  onChange={(e) => { setStateLocation(e.target.value); setMissingDetails(false); }}
+                  className={`w-full p-3.5 pl-4 pr-10 text-sm font-bold bg-[#FDF8F8] border rounded-xl text-[#163D46] appearance-none focus:outline-none focus:bg-white transition-all cursor-pointer ${
+                    missingDetails && !stateLocation ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-[#C8B4FA]'
+                  }`}
+                >
+                  <option value="">Choose State...</option>
+                  {US_STATES.map(st => <option key={st} value={st}>{st}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none text-slate-400">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -267,7 +318,7 @@ export default function AppV2() {
         </div>
 
         {/* 🎯 DYNAMIC RESULTS & SUB-QUESTIONS PANEL */}
-        {selectedService && age && stateLocation && (
+        {selectedService && ageGroup && stateLocation && (
           <div ref={resultsRef} className="w-full bg-white rounded-3xl shadow-md border border-slate-100 overflow-hidden animate-fade-in scroll-mt-24 flex flex-col md:flex-row">
             
             {/* ========================================================= */}
@@ -418,7 +469,7 @@ export default function AppV2() {
               </div>
 
               {/* State Override Legal Restriction Banner */}
-              {Number(age) < 18 && HIGH_RESTRICTION_STATES.includes(stateLocation) && (
+              {ageGroup === 'under_18' && HIGH_RESTRICTION_STATES.includes(stateLocation) && (
                 <>
                   {selectedService === 'abortion' && (
                     <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl text-xs text-amber-900 leading-relaxed font-medium mb-4">
