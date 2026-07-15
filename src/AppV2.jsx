@@ -143,6 +143,11 @@ export default function AppV2() {
     }
     if (selectedService === 'contraceptive' && contraceptiveUrgency) {
       list = list.filter(item => item?.subType === 'all' || item?.subType === contraceptiveUrgency);
+      
+      {/* 🔧 ENGINE FIX: If emergency contraception is active, filter out loose informational resource pages that lack specific clinic/delivery routing data */}
+      if (contraceptiveUrgency === 'emergency') {
+        list = list.filter(item => item?.deliveryType === 'in-person' || item?.deliveryType === 'mail');
+      }
     }
     if (selectedService === 'lgbtq' && lgbtqSupportType) {
       list = list.filter(item => item?.subType === 'all' || item?.subType === lgbtqSupportType);
@@ -239,7 +244,6 @@ export default function AppV2() {
                     <span className="text-sm sm:text-base font-bold tracking-normal pl-1 text-slate-700">
                       Select your age group: <span className="text-red-500 font-bold ml-0.5">*</span>
                     </span>
-                    {/* 🔧 SPACING & VISIBILITY FIXED: Added gap-1.5 inside the internal container grid to cleanly space the options */}
                     <div className={`grid grid-cols-2 p-1 gap-1.5 bg-[#FDFAF9] border shadow-inner rounded-xl w-full h-[54px] items-center ${missingDetails && !ageGroup ? 'border-red-400' : 'border-slate-300'}`}>
                       <button 
                         type="button"
@@ -382,7 +386,8 @@ export default function AppV2() {
                     <div className="flex flex-col gap-2">
                       {[{ value: 'emergency', label: 'Yes, need urgent Plan B' }, { value: 'routine', label: 'No, regular birth control' }].map(opt => (
                         <button
-                          key={opt.value} onClick={() => { setContraceptiveUrgency(opt.value); setDeliveryFilter(opt.value === 'emergency' ? 'in-person' : 'all'); }}
+                          key={opt.value} 
+                          onClick={() => { setContraceptiveUrgency(opt.value); setDeliveryFilter('all'); }}
                           className={`p-3 text-xs sm:text-sm font-bold rounded-xl border-2 text-left cursor-pointer transition-all ${contraceptiveUrgency === opt.value ? 'border-[#CEC1F0] bg-[#E0D6FA] text-[#034B41]' : 'border-gray-100 bg-white text-slate-600'}`}
                         >
                           {opt.label}
@@ -502,6 +507,7 @@ export default function AppV2() {
                 )}
               </div>
 
+              {/* COLUMN B: SEARCH FEED DIRECTORY */}
               <div className="p-5 bg-white md:w-7/12 flex flex-col relative space-y-4 text-xs sm:text-sm">
                 
                 <div className="flex items-center justify-between border-b border-purple-50 pb-3">
