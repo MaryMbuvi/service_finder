@@ -2,14 +2,62 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { masterResources } from './data/resources.js';
 import serviceHeroImg from './assets/servicePage_transparent.png';
 
-// --- GLOBAL STATIC CONFIGURATIONS ---
-const US_STATES = [
-  'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'
+// STATIC US STATE DICTIONARY
+const US_STATES_PRESETS = [
+  { name: 'Alabama', code: 'AL', sampleZip: '35004' },
+  { name: 'Alaska', code: 'AK', sampleZip: '99501' },
+  { name: 'Arizona', code: 'AZ', sampleZip: '85001' },
+  { name: 'Arkansas', code: 'AR', sampleZip: '72201' },
+  { name: 'California', code: 'CA', sampleZip: '90001' },
+  { name: 'Colorado', code: 'CO', sampleZip: '80201' },
+  { name: 'Connecticut', code: 'CT', sampleZip: '06101' },
+  { name: 'Delaware', code: 'DE', sampleZip: '19701' },
+  { name: 'Florida', code: 'FL', sampleZip: '33101' },
+  { name: 'Georgia', code: 'GA', sampleZip: '30301' },
+  { name: 'Hawaii', code: 'HI', sampleZip: '96801' },
+  { name: 'Idaho', code: 'ID', sampleZip: '83701' },
+  { name: 'Illinois', code: 'IL', sampleZip: '60601' },
+  { name: 'Indiana', code: 'IN', sampleZip: '46201' },
+  { name: 'Iowa', code: 'IA', sampleZip: '50301' },
+  { name: 'Kansas', code: 'KS', sampleZip: '66601' },
+  { name: 'Kentucky', code: 'KY', sampleZip: '40201' },
+  { name: 'Louisiana', code: 'LA', sampleZip: '70112' },
+  { name: 'Maine', code: 'ME', sampleZip: '04101' },
+  { name: 'Maryland', code: 'MD', sampleZip: '21201' },
+  { name: 'Massachusetts', code: 'MA', sampleZip: '02108' },
+  { name: 'Michigan', code: 'MI', sampleZip: '48201' },
+  { name: 'Minnesota', code: 'MN', sampleZip: '55401' },
+  { name: 'Mississippi', code: 'MS', sampleZip: '39201' },
+  { name: 'Missouri', code: 'MO', sampleZip: '65101' },
+  { name: 'Montana', code: 'MT', sampleZip: '59601' },
+  { name: 'Nebraska', code: 'NE', sampleZip: '68501' },
+  { name: 'Nevada', code: 'NV', sampleZip: '89101' },
+  { name: 'New Hampshire', code: 'NH', sampleZip: '03301' },
+  { name: 'New Jersey', code: 'NJ', sampleZip: '07101' },
+  { name: 'New Mexico', code: 'NM', sampleZip: '87501' },
+  { name: 'New York', code: 'NY', sampleZip: '10001' },
+  { name: 'North Carolina', code: 'NC', sampleZip: '27601' },
+  { name: 'North Dakota', code: 'ND', sampleZip: '58501' },
+  { name: 'Ohio', code: 'OH', sampleZip: '43201' },
+  { name: 'Oklahoma', code: 'OK', sampleZip: '73101' },
+  { name: 'Oregon', code: 'OR', sampleZip: '97201' },
+  { name: 'Pennsylvania', code: 'PA', sampleZip: '17101' },
+  { name: 'Rhode Island', code: 'RI', sampleZip: '02901' },
+  { name: 'South Carolina', code: 'SC', sampleZip: '29201' },
+  { name: 'South Dakota', code: 'SD', sampleZip: '57501' },
+  { name: 'Tennessee', code: 'TN', sampleZip: '37201' },
+  { name: 'Texas', code: 'TX', sampleZip: '73301' },
+  { name: 'Utah', code: 'UT', sampleZip: '84101' },
+  { name: 'Vermont', code: 'VT', sampleZip: '05601' },
+  { name: 'Virginia', code: 'VA', sampleZip: '23218' },
+  { name: 'Washington', code: 'WA', sampleZip: '98501' },
+  { name: 'West Virginia', code: 'WV', sampleZip: '25301' },
+  { name: 'Wisconsin', code: 'WI', sampleZip: '53701' },
+  { name: 'Wyoming', code: 'WY', sampleZip: '82001' }
 ];
 
 const HIGH_RESTRICTION_STATES = ['Texas', 'Florida', 'Ohio', 'Alabama', 'Arkansas', 'Mississippi', 'Kentucky', 'Louisiana'];
 
-// CONDENSED CRISIS REGISTRY
 const CONDENSED_HELPLINES = [
   { group: "Safety & Abuse", name: "LoveIsRespect (Teen Safety)", contact: "Text 'LOVEIS' to 22522 / Call 1-866-331-9474", desc: "100% confidential space to text or talk if a partner is threatening, controlling, or hurting you." },
   { group: "Mental Health", name: "988 Suicide & Crisis Lifeline", contact: "Call or Text 988", desc: "Free, confidential, 24/7 support via call or text if you are feeling completely overwhelmed." },
@@ -28,12 +76,18 @@ const SERVICES = [
 ];
 
 export default function AppV2() {
-  // Core Profile
+  // Profile Parameters
   const [ageGroup, setAgeGroup] = useState(''); 
-  const [stateLocation, setStateLocation] = useState('');
+  const [locationInput, setLocationInput] = useState('');
+  const [selectedState, setSelectedState] = useState('');
+  const [selectedZip, setSelectedZip] = useState('');
   const [missingDetails, setMissingDetails] = useState(false); 
+
+  // Autocomplete State
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   
-  // Navigation & Keyword Search
+  // Workspace State
   const [selectedService, setSelectedService] = useState(null);
   const [providerSearch, setProviderSearch] = useState('');
 
@@ -51,32 +105,133 @@ export default function AppV2() {
 
   const resultsRef = useRef(null);
   const detailsRef = useRef(null);
+  const autocompleteService = useRef(null);
+  const placesService = useRef(null);
 
-  // 🚀 THE URL LISTENER
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const passedService = params.get('service');
-    const passedAge = params.get('age');
-    const passedState = params.get('state');
-
-    if (passedAge) {
-      if (passedAge === 'under_18' || passedAge === '18_plus') {
-        setAgeGroup(passedAge);
-      } else if (!isNaN(passedAge)) {
-        setAgeGroup(Number(passedAge) < 18 ? 'under_18' : '18_plus');
+    const initPlaces = () => {
+      if (window.google && window.google.maps && window.google.maps.places) {
+        autocompleteService.current = new window.google.maps.places.AutocompleteService();
+        placesService.current = new window.google.maps.places.PlacesService(document.createElement('div'));
       }
-    }
-    
-    if (passedState) setStateLocation(passedState);
-    
-    if (passedService) {
-      setSelectedService(passedService);
-      setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
-    }
+    };
+
+    initPlaces();
+    const timer = setTimeout(initPlaces, 1200);
+    return () => clearTimeout(timer);
   }, []);
 
+  // 🚀 EXCLUSIVE STATE NAME OR ZIP CODE FILTER
+  const handleLocationInputChange = (e) => {
+    const val = e.target.value;
+    setLocationInput(val);
+
+    // Reset saved selections as user types something new
+    setSelectedState('');
+    setSelectedZip('');
+
+    const cleanQuery = val.trim().toLowerCase();
+
+    if (!cleanQuery) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    const isNumeric = /^\d+$/.test(cleanQuery);
+
+    let filteredStates = [];
+
+    if (isNumeric) {
+      // 1. NUMERIC ZIP FILTER
+      filteredStates = US_STATES_PRESETS.filter(st => 
+        st.sampleZip.startsWith(cleanQuery)
+      ).map(st => ({
+        id: st.code,
+        label: `${cleanQuery} (${st.name})`,
+        badgeCode: st.code,
+        type: 'state',
+        stateName: st.name,
+        stateCode: st.code,
+        sampleZip: cleanQuery
+      }));
+    } else {
+      // 2. TEXT STATE NAME FILTER (Excludes 2-letter codes)
+      filteredStates = US_STATES_PRESETS.filter(st => 
+        st.name.toLowerCase().includes(cleanQuery)
+      ).map(st => ({
+        id: st.code,
+        label: st.name,
+        badgeCode: st.code,
+        type: 'state',
+        stateName: st.name,
+        stateCode: st.code,
+        sampleZip: st.sampleZip
+      }));
+    }
+
+    // Google Places API fallback
+    if (autocompleteService.current && cleanQuery.length >= 3) {
+      autocompleteService.current.getPlacePredictions(
+        { input: val, componentRestrictions: { country: 'us' } },
+        (predictions, status) => {
+          if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
+            const googleMatches = predictions.map(p => ({
+              id: p.place_id,
+              label: p.description,
+              badgeCode: 'LOC',
+              type: 'google',
+              place_id: p.place_id
+            }));
+            
+            setSuggestions([...filteredStates, ...googleMatches]);
+            setShowSuggestions(true);
+          } else {
+            setSuggestions(filteredStates);
+            setShowSuggestions(filteredStates.length > 0);
+          }
+        }
+      );
+    } else {
+      setSuggestions(filteredStates);
+      setShowSuggestions(filteredStates.length > 0);
+    }
+  };
+
+  const handleSelectSuggestion = (item) => {
+    setLocationInput(item.label);
+    setShowSuggestions(false);
+    setMissingDetails(false);
+
+    if (item.type === 'state') {
+      setSelectedState(item.stateName);
+      if (/^\d{5}$/.test(item.sampleZip)) {
+        setSelectedZip(item.sampleZip);
+      }
+    } else if (item.type === 'google' && placesService.current) {
+      placesService.current.getDetails({ placeId: item.place_id }, (placeDetails, status) => {
+        if (status === window.google.maps.places.PlacesServiceStatus.OK && placeDetails) {
+          let state = '';
+          let zip = '';
+
+          placeDetails.address_components?.forEach(component => {
+            if (component.types.includes('administrative_area_level_1')) {
+              state = component.long_name;
+            }
+            if (component.types.includes('postal_code')) {
+              zip = component.long_name;
+            }
+          });
+
+          setSelectedState(state);
+          setSelectedZip(zip);
+        }
+      });
+    }
+  };
+
   const handleServiceClick = (serviceId) => {
-    if (!ageGroup || !stateLocation) {
+    if (!ageGroup || !locationInput.trim()) {
       setMissingDetails(true);
       detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
@@ -89,7 +244,6 @@ export default function AppV2() {
     } else {
       setSelectedService(serviceId);
       
-      // Complete sub-filter resets
       setWeeksPregnant('');
       setHasStiSymptoms('');
       setContraceptiveUrgency('');
@@ -111,7 +265,7 @@ export default function AppV2() {
     let list = [...rawData];
 
     const isMinor = ageGroup === 'under_18';
-    const isRestrictedZone = stateLocation !== '' && HIGH_RESTRICTION_STATES.includes(stateLocation);
+    const isRestrictedZone = selectedState !== '' && HIGH_RESTRICTION_STATES.includes(selectedState);
 
     list = list.filter(item => item?.category === 'all' || item?.category === selectedService);
 
@@ -122,7 +276,7 @@ export default function AppV2() {
         list = list.filter(item => item?.deliveryType !== 'in-person');
         list.unshift({
           name: 'Repro Legal Helpline (reprolegalhelpline.org)',
-          desc: `Because you are under 18 in ${stateLocation}, physical care paths have deep legal hurdles. This private legal group helps you safely explore a confidential judge's note (Judicial Bypass) or safe travel paths.`,
+          desc: `Because you are under 18 in ${selectedState}, physical care paths have deep legal hurdles. This private legal group helps you safely explore a confidential judge's note (Judicial Bypass) or safe travel paths.`,
           link: 'https://www.reprolegalhelpline.org',
           deliveryType: 'all',
           costType: 'all',
@@ -134,7 +288,7 @@ export default function AppV2() {
       }
     }
 
-    // Comprehensive Contextual Filter Triggers
+    // Contextual Sub-filters
     if (selectedService === 'abortion' && weeksPregnant) {
       list = list.filter(item => item?.subType === 'all' || item?.subType === weeksPregnant);
     }
@@ -143,8 +297,6 @@ export default function AppV2() {
     }
     if (selectedService === 'contraceptive' && contraceptiveUrgency) {
       list = list.filter(item => item?.subType === 'all' || item?.subType === contraceptiveUrgency);
-      
-      {/* 🔧 ENGINE FIX: If emergency contraception is active, filter out loose informational resource pages that lack specific clinic/delivery routing data */}
       if (contraceptiveUrgency === 'emergency') {
         list = list.filter(item => item?.deliveryType === 'in-person' || item?.deliveryType === 'mail');
       }
@@ -167,13 +319,53 @@ export default function AppV2() {
       );
     }
 
+    // Router Engine
     list = list.map(item => {
-      let finalUrl = item?.link || '#';
-      if ((item?.link?.includes('ineedana.com') || item?.link?.includes('abortionfinder.org')) && ageGroup && stateLocation) {
-        const proxyAge = ageGroup === 'under_18' ? 16 : 22;
-        finalUrl = `${item.link}/search?age=${proxyAge}&state=${stateLocation}`;
+      let rawUrl = item?.link || '#';
+      if (rawUrl === '#') return { ...item, link: '#' };
+
+      try {
+        const urlObj = new URL(rawUrl);
+        const numericAge = ageGroup === 'under_18' ? 16 : 22;
+        const locVal = selectedZip || selectedState || locationInput;
+
+        if (urlObj.hostname.includes('plancpills.org')) {
+          if (selectedState) {
+            const stateSlug = selectedState.toLowerCase().replace(/\s+/g, '-');
+            return { ...item, link: `https://www.plancpills.org/states/${stateSlug}` };
+          }
+          return { ...item, link: 'https://www.plancpills.org' };
+        }
+
+        if (urlObj.hostname.includes('ineedana.com')) {
+          return {
+            ...item,
+            link: `https://www.ineedana.com/search?${selectedZip ? `zip=${selectedZip}` : `state=${encodeURIComponent(selectedState)}`}&age=${numericAge}`
+          };
+        }
+
+        if (urlObj.hostname.includes('abortionfinder.org')) {
+          return {
+            ...item,
+            link: `https://www.abortionfinder.org/results?location=${encodeURIComponent(locVal)}&age=${numericAge}`
+          };
+        }
+
+        if (urlObj.hostname.includes('plannedparenthood.org')) {
+          return {
+            ...item,
+            link: `https://www.plannedparenthood.org/health-center?location=${encodeURIComponent(locVal)}`
+          };
+        }
+
+        if (locVal) urlObj.searchParams.set('location', locVal);
+        if (selectedState) urlObj.searchParams.set('state', selectedState);
+        if (numericAge) urlObj.searchParams.set('age', numericAge);
+
+        return { ...item, link: urlObj.toString() };
+      } catch (e) {
+        return { ...item, link: rawUrl };
       }
-      return { ...item, link: finalUrl };
     });
 
     return list.filter(item => {
@@ -182,140 +374,168 @@ export default function AppV2() {
       return matchesDelivery && matchesCost;
     });
 
-  }, [selectedService, ageGroup, stateLocation, weeksPregnant, hasStiSymptoms, contraceptiveUrgency, lgbtqSupportType, mentalHealthType, gbvSupportPreference, deliveryFilter, insuranceFilter, providerSearch]);
+  }, [selectedService, ageGroup, selectedState, selectedZip, locationInput, weeksPregnant, hasStiSymptoms, contraceptiveUrgency, lgbtqSupportType, mentalHealthType, gbvSupportPreference, deliveryFilter, insuranceFilter, providerSearch]);
 
-  const refreshTriggerKey = `${ageGroup}-${stateLocation}-${deliveryFilter}-${insuranceFilter}-${providerSearch}`;
+  const refreshTriggerKey = `${ageGroup}-${locationInput}-${deliveryFilter}-${insuranceFilter}-${providerSearch}`;
 
   const isPhysicalItemTrack = selectedService === 'abortion' || selectedService === 'testing' || selectedService === 'contraceptive' || selectedService === 'pregnancy';
 
   return (
     <div 
       style={{ fontFamily: 'Gelica, gelica, sans-serif' }}
-      className="w-full bg-[#FDFAF9] antialiased flex items-center justify-center p-1"
+      className="w-full bg-[#FDFAF9] antialiased flex items-center justify-center p-1 min-h-screen"
     >
-      
-      {/* GLOBAL BRAND BORDER WRAPPER */}
-      <div className="w-full max-w-[1240px] bg-gradient-to-b from-[#F4FFFB] to-white rounded-[2rem] border-[6px] border-[#FCE8ED] shadow-sm overflow-hidden pt-6 pb-16">
+      <div className="w-full max-w-[1240px] bg-white rounded-[2rem] border-[6px] border-[#FCE8ED] shadow-sm overflow-hidden pb-16">
 
-        <div id="center" className="w-full mx-auto px-4 sm:px-8 space-y-8 flex flex-col items-center flex-grow">
+        {/* ============================================================ */}
+        {/* 🌟 TOP SECTION (GRADIENT + UNBOXED AUTOCOMPLETE SEARCH)       */}
+        {/* ============================================================ */}
+        <div className="w-full bg-gradient-to-b from-[#F4FFFB] via-[#F4FFFB]/60 to-white pt-6 pb-10 px-4 sm:px-8 border-b border-purple-50">
+          <div id="center" className="w-full mx-auto space-y-8 flex flex-col items-center">
 
-          {/* 🔒 PRIVACY BANNER */}
-          <div className="w-full bg-white/80 backdrop-blur-sm border border-purple-100 p-5 rounded-2xl flex items-start gap-4 shadow-sm mt-2 text-sm sm:text-base">
-            <span className="text-xl sm:text-2xl">🔒</span>
-            <div>
-              <span className="font-extrabold text-base sm:text-lg block mb-0.5 text-[#263f43]">You are safe and anonymous here.</span>
-              <span className="text-[#382a49] block">
-                We never ask for your name, phone number, or who you are. We only use your age and state to show you the right legal options and to understand which regions need the most help. Your personal identity is completely hidden.
-              </span>
+            {/* 🔒 PRIVACY BANNER */}
+            <div className="w-full bg-white/90 backdrop-blur-sm border border-purple-100 p-5 rounded-2xl flex items-start gap-4 shadow-sm text-sm sm:text-base">
+              <span className="text-xl sm:text-2xl">🔒</span>
+              <div>
+                <span className="font-extrabold text-base sm:text-lg block mb-0.5 text-[#263f43]">You are safe and anonymous here.</span>
+                <span className="text-[#382a49] block">
+                  We never ask for your name, phone number, or who you are. We only use your age and location to show you the right legal options and nearest care providers. Your personal identity is completely hidden.
+                </span>
+              </div>
             </div>
-          </div>
 
-          {/* ============================================================ */}
-          {/* 📋 UNIFIED SEARCH CONFIGURATION FEED                         */}
-          {/* ============================================================ */}
-          <div className="w-full flex flex-col lg:flex-row gap-6 lg:items-start items-center">
-            
-            {/* LEFT FILTERING BLOCK */}
-            <div 
-              ref={detailsRef}
-              className={`w-full lg:flex-1 bg-white p-5 sm:p-6 rounded-3xl shadow-sm border transition-all duration-300 flex flex-col gap-6 ${
-                missingDetails ? 'border-red-400 ring-4 ring-red-50' : 'border-[#E0D6FA]'
-              }`}
-            >
-              {/* Profile Config Controls */}
-              <div className="space-y-4">
-                <div>
-                  <h3 className="font-extrabold text-base sm:text-lg text-[#034B41]">
-                    Your details <span className="text-red-500 font-bold ml-0.5">*</span>
-                  </h3>
-                  {missingDetails ? (
-                    <p className="text-xs sm:text-sm mt-1 text-red-500 font-bold animate-fade-in">
-                      ⚠️ {!ageGroup && !stateLocation ? "Please select your age bracket and state destination below." : !ageGroup ? "Please complete your age selection." : "Please choose your state."}
-                    </p>
-                  ) : (
-                    <p className="text-xs sm:text-sm mt-1.5 mb-2.5 text-[#6C768E] font-semibold leading-relaxed">
-                      Entering this accurately auto-filters clinics to match the healthcare laws in your state.
-                    </p>
-                  )}
-                </div>
+            {/* UNBOXED DETAILS, CONTROLS, AND ENLARGED IMAGE SECTION */}
+            <div className="w-full flex flex-col lg:flex-row gap-8 lg:items-center justify-between">
+              
+              {/* LEFT: INPUTS & CATEGORIES */}
+              <div ref={detailsRef} className="w-full lg:w-[45%] flex flex-col gap-6">
                 
-                <div className="flex flex-col sm:flex-row gap-5 w-full items-end">
-                  <div className="w-full sm:w-1/2 flex flex-col gap-2">
-                    <span className="text-sm sm:text-base font-bold tracking-normal pl-1 text-slate-700">
-                      Select your age group: <span className="text-red-500 font-bold ml-0.5">*</span>
-                    </span>
-                    <div className={`grid grid-cols-2 p-1 gap-1.5 bg-[#FDFAF9] border shadow-inner rounded-xl w-full h-[54px] items-center ${missingDetails && !ageGroup ? 'border-red-400' : 'border-slate-300'}`}>
-                      <button 
-                        type="button"
-                        onClick={() => { setAgeGroup('under_18'); setMissingDetails(false); }}
-                        className={`h-full text-xs sm:text-sm font-bold rounded-lg transition-all cursor-pointer border ${ageGroup === 'under_18' ? 'bg-[#034B41] text-white shadow-sm border-[#034B41]' : 'text-[#3A4A60] bg-white border-slate-200 shadow-sm hover:text-[#034B41] hover:bg-slate-100'}`}
-                      >
-                        Under 18
-                      </button>
-                      <button 
-                        type="button"
-                        onClick={() => { setAgeGroup('18_plus'); setMissingDetails(false); }}
-                        className={`h-full text-xs sm:text-sm font-bold rounded-lg transition-all cursor-pointer border ${ageGroup === '18_plus' ? 'bg-[#034B41] text-white shadow-sm border-[#034B41]' : 'text-[#3A4A60] bg-white border-slate-200 shadow-sm hover:text-[#034B41] hover:bg-slate-100'}`}
-                      >
-                        18 or older
-                      </button>
-                    </div>
+                {/* Profile Controls */}
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="font-extrabold text-lg sm:text-xl text-[#034B41]">
+                      Your details <span className="text-red-500 font-bold ml-0.5">*</span>
+                    </h3>
+                    {missingDetails ? (
+                      <p className="text-xs sm:text-sm mt-1 text-red-500 font-bold animate-fade-in">
+                        ⚠️ {!ageGroup && !locationInput ? "Please select your age group and enter your location below." : !ageGroup ? "Please complete your age selection." : "Please enter a valid location."}
+                      </p>
+                    ) : (
+                      <p className="text-xs sm:text-sm mt-1.5 mb-2.5 text-[#6C768E] font-semibold leading-relaxed">
+                        Entering your location automatically detects local health laws and clinic options.
+                      </p>
+                    )}
                   </div>
-
-                  <div className="w-full sm:w-1/2 flex flex-col gap-2">
-                    <span className="text-sm sm:text-base font-bold tracking-normal pl-1 text-slate-700">
-                      Select your state: <span className="text-red-500 font-bold ml-0.5">*</span>
-                    </span>
-                    <div className="relative w-full">
-                      <select 
-                        value={stateLocation} 
-                        onChange={(e) => { setStateLocation(e.target.value); setMissingDetails(false); }}
-                        className={`w-full h-[54px] py-3.5 pl-4 pr-10 text-sm sm:text-sm font-bold bg-[#FDFAF9] border rounded-xl text-[#034B41] appearance-none focus:outline-none focus:border-[#CEC1F0] transition-all cursor-pointer ${missingDetails && !stateLocation ? 'border-red-400' : 'border-gray-200'}`}
-                      >
-                        <option value="">Choose State...</option>
-                        {US_STATES.map(st => <option key={st} value={st}>{st}</option>)}
-                      </select>
-                      <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none text-slate-400">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                  
+                  <div className="flex flex-col sm:flex-row gap-4 w-full items-end">
+                    
+                    {/* AGE SELECTION BUTTONS */}
+                    <div className="w-full sm:w-5/12 flex flex-col gap-2">
+                      <span className="text-xs sm:text-sm font-bold tracking-normal pl-1 text-slate-700">
+                        Age Group: <span className="text-red-500 font-bold ml-0.5">*</span>
+                      </span>
+                      <div className={`grid grid-cols-2 p-1 gap-1 bg-white border shadow-sm rounded-xl w-full h-[54px] items-center ${missingDetails && !ageGroup ? 'border-red-400' : 'border-slate-300'}`}>
+                        <button 
+                          type="button"
+                          onClick={() => { setAgeGroup('under_18'); setMissingDetails(false); }}
+                          className={`h-full text-[11px] sm:text-xs font-bold rounded-lg transition-all cursor-pointer border ${ageGroup === 'under_18' ? 'bg-[#034B41] text-white shadow-sm border-[#034B41]' : 'text-[#3A4A60] bg-white border-slate-200 shadow-sm hover:text-[#034B41] hover:bg-slate-100'}`}
+                        >
+                          Under 18
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => { setAgeGroup('18_plus'); setMissingDetails(false); }}
+                          className={`h-full text-[11px] sm:text-xs font-bold rounded-lg transition-all cursor-pointer border ${ageGroup === '18_plus' ? 'bg-[#034B41] text-white shadow-sm border-[#034B41]' : 'text-[#3A4A60] bg-white border-slate-200 shadow-sm hover:text-[#034B41] hover:bg-slate-100'}`}
+                        >
+                          18 or older
+                        </button>
                       </div>
                     </div>
+
+                    {/* LOCATION SEARCH BAR */}
+                    <div className="w-full sm:w-7/12 flex flex-col gap-2 relative">
+                      <span className="text-xs sm:text-sm font-bold tracking-normal pl-1 text-slate-700">
+                        Location <span className="text-red-500 font-bold ml-0.5">*</span>
+                      </span>
+                      <div className="relative w-full">
+                        <input 
+                          type="text"
+                          placeholder="Search by state name or ZIP code..."
+                          value={locationInput}
+                          onChange={handleLocationInputChange}
+                          onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                          className={`w-full h-[54px] py-3.5 pl-4 pr-10 text-xs sm:text-sm font-bold bg-white border rounded-xl text-[#034B41] focus:outline-none focus:border-[#CEC1F0] shadow-sm transition-all ${missingDetails && !locationInput ? 'border-red-400' : 'border-slate-300'}`}
+                        />
+                        <span className="absolute right-3.5 top-1/2 transform -translate-y-1/2 text-slate-400 text-sm">📍</span>
+                      </div>
+
+                      {/* Suggestions Dropdown */}
+                      {showSuggestions && suggestions.length > 0 && (
+                        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-purple-100 rounded-xl shadow-lg overflow-hidden max-h-60 overflow-y-auto">
+                          {suggestions.map((sug, idx) => (
+                            <div 
+                              key={idx}
+                              onClick={() => handleSelectSuggestion(sug)}
+                              className="p-3 text-xs font-bold text-slate-700 hover:bg-[#F4FFFB] hover:text-[#034B41] cursor-pointer flex items-center justify-between border-b border-gray-50 last:border-0"
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="text-slate-400">📍</span>
+                                <span>{sug.label}</span>
+                              </div>
+                              <span className="text-[10px] font-black text-[#034B41] bg-teal-50 border border-teal-200 px-2 py-0.5 rounded tracking-wide uppercase">
+                                {sug.badgeCode}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
                   </div>
                 </div>
-              </div>
 
-              {/* Category Nav Track */}
-              <div className="space-y-2.5 mt-4">
-                <h2 className="font-extrabold text-base sm:text-lg text-[#034B41]">Which services you are looking for?</h2>
-                <div className="flex flex-wrap gap-3 w-full">
-                  {SERVICES.map((srv) => (
-                    <button
-                      key={srv.id} 
-                      onClick={() => handleServiceClick(srv.id)}
-                      className={`px-5 py-3.5 rounded-xl text-xs sm:text-sm font-bold transition-all border border-slate-200 active:scale-95 cursor-pointer shadow-sm ${
-                        selectedService === srv.id
-                          ? 'bg-[#E0D6FA] text-[#034B41] border-[#CEC1F0]'
-                          : 'bg-white text-[#3A4A60] hover:bg-[#d7efe7] hover:border-slate-200'
-                      }`}
-                    >
-                      {srv.name}
-                    </button>
-                  ))}
+                {/* Categories Track */}
+                <div className="space-y-3 mt-2">
+                  <h2 className="font-extrabold text-lg sm:text-xl text-[#034B41]">Which services you are looking for?</h2>
+                  <div className="flex flex-wrap gap-3 w-full">
+                    {SERVICES.map((srv) => (
+                      <button
+                        key={srv.id} 
+                        onClick={() => handleServiceClick(srv.id)}
+                        className={`px-5 py-3.5 rounded-xl text-xs sm:text-sm font-bold transition-all border active:scale-95 cursor-pointer shadow-sm ${
+                          selectedService === srv.id
+                            ? 'bg-[#E0D6FA] text-[#034B41] border-[#CEC1F0]'
+                            : 'bg-white text-[#3A4A60] border-slate-200 hover:bg-[#d7efe7] hover:border-slate-200'
+                        }`}
+                      >
+                        {srv.name}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+
               </div>
+
+              {/* RIGHT: ENLARGED BRAND ART CONTAINER (55% WIDTH & EXPANDED HEIGHT) */}
+              <div className="w-full lg:w-[55%] hidden lg:flex items-center justify-center p-2 bg-transparent overflow-hidden self-stretch min-h-[380px]">
+                <img 
+                  src={serviceHeroImg} 
+                  alt="Support network community graphic illustration" 
+                  className="w-full h-auto object-contain max-h-[560px] lg:max-h-[580px] drop-shadow-sm" 
+                />
+              </div>
+
             </div>
 
-            {/* RIGHT COMPONENT: BRAND ART CONTAINER */}
-            <div className="w-full lg:w-[42%] max-w-[420px] hidden lg:flex items-center justify-center p-2 bg-transparent overflow-hidden self-stretch min-h-[240px]">
-              <img 
-                src={serviceHeroImg} 
-                alt="Support network community graphic illustration" 
-                className="w-full h-auto object-contain max-h-[280px]" 
-              />
-            </div>
           </div>
+        </div>
 
-          {/* 🎯 CONTEXTUAL WORKSPACE FEED PANEL */}
-          {selectedService && ageGroup && stateLocation && (
+        {/* ============================================================ */}
+        {/* 🎯 LOWER SECTION (WORKSPACE FEED PANEL + HELPLINES)          */}
+        {/* ============================================================ */}
+        <div className="w-full px-4 sm:px-8 mt-8 space-y-8">
+          
+          {selectedService && ageGroup && locationInput && (
             <div 
               ref={resultsRef} 
               className="w-full bg-white rounded-3xl shadow-md border border-purple-50 overflow-hidden flex flex-col md:flex-row scroll-mt-24 animate-fade-in"
@@ -498,7 +718,6 @@ export default function AppV2() {
                   </button>
                 </div>
 
-                {/* ⚠️ HIGH-VISIBILITY ORIGINAL PLACEMENT INSURANCE WARNING */}
                 {insuranceFilter !== 'free-cash' && (
                   <div className="mt-4 bg-[#FFF9E6] border-l-4 border-amber-500 p-4 rounded-xl text-xs sm:text-sm text-[#034B41] font-semibold leading-relaxed shadow-sm animate-fade-in">
                     <span className="font-black block text-amber-800 text-sm sm:text-base mb-0.5">⚠️ Health insurance paper-trail notice</span>
@@ -528,11 +747,11 @@ export default function AppV2() {
                 </div>
 
                 {/* State Specific Youth Restriction Notices */}
-                {ageGroup === 'under_18' && HIGH_RESTRICTION_STATES.includes(stateLocation) && (
+                {ageGroup === 'under_18' && HIGH_RESTRICTION_STATES.includes(selectedState) && (
                   <>
                     {selectedService === 'abortion' && (
                       <div className="bg-red-50 border border-red-100 p-4 rounded-xl text-xs sm:text-sm text-red-950 font-medium">
-                        <strong>Youth access block warning:</strong> Because you are a minor inside {stateLocation}, local clinics face mandatory parent notification rules. To guarantee your absolute safety, we have prioritized secure legal bypass helplines and mail care networks.
+                        <strong>Youth access block warning:</strong> Because you are a minor inside {selectedState}, local clinics face mandatory parent notification rules. To guarantee your absolute safety, we have prioritized secure legal bypass helplines and mail care networks.
                       </div>
                     )}
                   </>
@@ -570,7 +789,9 @@ export default function AppV2() {
             </div>
           )}
 
-         
+          {/* ============================================================ */}
+          {/* 🆘 24/7 EMERGENCY CRISIS HELPLINES TRACK                      */}
+          {/* ============================================================ */}
           <div id="next-steps" className="w-full pt-8 py-6 my-4 border-t border-gray-200 flex flex-col gap-6">
             
             <div className="w-full max-w-none">
@@ -600,7 +821,6 @@ export default function AppV2() {
               ))}
             </div>
 
-            
             <div className="w-full bg-[#F4FFFB] border border-teal-100 p-5 rounded-xl text-center shadow-sm max-w-3xl mx-auto mt-2 animate-fade-in text-xs sm:text-sm">
               <p className="font-bold text-[#3A4A60] leading-relaxed">
                 Looking for support with a different situation? We have plenty of other youth-friendly resources ready for you. Explore all of your options right {' '}
