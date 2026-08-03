@@ -105,6 +105,7 @@ export default function AppV2() {
 
   const resultsRef = useRef(null);
   const detailsRef = useRef(null);
+  const crisisRef = useRef(null);
   const autocompleteService = useRef(null);
   const placesService = useRef(null);
 
@@ -121,12 +122,14 @@ export default function AppV2() {
     return () => clearTimeout(timer);
   }, []);
 
-  // 🚀 EXCLUSIVE STATE NAME OR ZIP CODE FILTER
+  const scrollToCrisisSection = () => {
+    crisisRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   const handleLocationInputChange = (e) => {
     const val = e.target.value;
     setLocationInput(val);
 
-    // Reset saved selections as user types something new
     setSelectedState('');
     setSelectedZip('');
 
@@ -143,7 +146,6 @@ export default function AppV2() {
     let filteredStates = [];
 
     if (isNumeric) {
-      // 1. NUMERIC ZIP FILTER
       filteredStates = US_STATES_PRESETS.filter(st => 
         st.sampleZip.startsWith(cleanQuery)
       ).map(st => ({
@@ -156,7 +158,6 @@ export default function AppV2() {
         sampleZip: cleanQuery
       }));
     } else {
-      // 2. TEXT STATE NAME FILTER (Excludes 2-letter codes)
       filteredStates = US_STATES_PRESETS.filter(st => 
         st.name.toLowerCase().includes(cleanQuery)
       ).map(st => ({
@@ -170,7 +171,6 @@ export default function AppV2() {
       }));
     }
 
-    // Google Places API fallback
     if (autocompleteService.current && cleanQuery.length >= 3) {
       autocompleteService.current.getPlacePredictions(
         { input: val, componentRestrictions: { country: 'us' } },
@@ -385,16 +385,16 @@ export default function AppV2() {
       style={{ fontFamily: 'Gelica, gelica, sans-serif' }}
       className="w-full bg-[#FDFAF9] antialiased flex items-center justify-center p-1 min-h-screen"
     >
-      <div className="w-full max-w-[1240px] bg-white rounded-[2rem] border-[6px] border-[#FCE8ED] shadow-sm overflow-hidden pb-16">
+      <div className="w-full max-w-[1400px] bg-white rounded-[2rem] border-[6px] border-[#FCE8ED] shadow-sm overflow-hidden pb-16">
 
         {/* ============================================================ */}
-        {/* 🌟 TOP SECTION (GRADIENT + UNBOXED AUTOCOMPLETE SEARCH)       */}
+        {/* 🌟 TOP HERO SECTION (TALLER IMAGE HEIGHT PUSHES DIVIDER DOWN) */}
         {/* ============================================================ */}
-        <div className="w-full bg-gradient-to-b from-[#F4FFFB] via-[#F4FFFB]/60 to-white pt-6 pb-10 px-4 sm:px-8 border-b border-purple-50">
-          <div id="center" className="w-full mx-auto space-y-8 flex flex-col items-center">
+        <div className="w-full bg-gradient-to-b from-[#E6F7F2] via-[#F0FAF7] to-white pt-6 pb-0 px-4 sm:px-8 pb-4 border-b border-purple-100 min-h-[88vh] flex flex-col justify-between">
+          <div id="center" className="w-full mx-auto flex flex-col items-center h-full justify-between flex-1">
 
             {/* 🔒 PRIVACY BANNER */}
-            <div className="w-full bg-white/90 backdrop-blur-sm border border-purple-100 p-5 rounded-2xl flex items-start gap-4 shadow-sm text-sm sm:text-base">
+            <div className="w-full bg-white/95 backdrop-blur-sm border border-teal-100 p-4 sm:p-5 rounded-2xl flex items-start gap-4 shadow-sm text-sm sm:text-base mb-6">
               <span className="text-xl sm:text-2xl">🔒</span>
               <div>
                 <span className="font-extrabold text-base sm:text-lg block mb-0.5 text-[#263f43]">You are safe and anonymous here.</span>
@@ -404,11 +404,11 @@ export default function AppV2() {
               </div>
             </div>
 
-            {/* UNBOXED DETAILS, CONTROLS, AND ENLARGED IMAGE SECTION */}
-            <div className="w-full flex flex-col lg:flex-row gap-8 lg:items-center justify-between">
+            {/* UNBOXED CONTROLS & GROUNDED FULL HERO IMAGE */}
+            <div className="w-full flex flex-col lg:flex-row gap-20 lg:items-end justify-between pb-0 flex-1">
               
-              {/* LEFT: INPUTS & CATEGORIES */}
-              <div ref={detailsRef} className="w-full lg:w-[45%] flex flex-col gap-6">
+              {/* LEFT: INPUTS, CATEGORIES & CRISIS TEXT */}
+              <div ref={detailsRef} className="w-full lg:w-[45%] flex flex-col gap-6 pb-6 justify-between h-full">
                 
                 {/* Profile Controls */}
                 <div className="space-y-4">
@@ -421,7 +421,7 @@ export default function AppV2() {
                         ⚠️ {!ageGroup && !locationInput ? "Please select your age group and enter your location below." : !ageGroup ? "Please complete your age selection." : "Please enter a valid location."}
                       </p>
                     ) : (
-                      <p className="text-xs sm:text-sm mt-1.5 mb-2.5 text-[#6C768E] font-semibold leading-relaxed">
+                      <p className="text-xs sm:text-sm mt-1 text-[#6C768E] font-semibold leading-relaxed">
                         Entering your location automatically detects local health laws and clinic options.
                       </p>
                     )}
@@ -495,9 +495,9 @@ export default function AppV2() {
                 </div>
 
                 {/* Categories Track */}
-                <div className="space-y-3 mt-2">
+                <div className="space-y-3">
                   <h2 className="font-extrabold text-lg sm:text-xl text-[#034B41]">Which services you are looking for?</h2>
-                  <div className="flex flex-wrap gap-3 w-full">
+                  <div className="flex flex-wrap gap-2.5 w-full">
                     {SERVICES.map((srv) => (
                       <button
                         key={srv.id} 
@@ -514,14 +514,28 @@ export default function AppV2() {
                   </div>
                 </div>
 
+                {/* 📍 IN CASE OF CRISIS SECTION */}
+                <div className="pt-2 space-y-1">
+                  <h3 className="font-extrabold text-base sm:text-lg text-[#034B41]">In case of crisis:</h3>
+                  <p className="text-xs sm:text-sm text-[#6C768E] font-semibold leading-relaxed">
+                    If you are in an urgent crisis we have compiled a list of immediate helplines for crises related to sexual health, abuse, mental health, LGBTQ+ youth, and more. Just click{' '}
+                    <button 
+                      onClick={scrollToCrisisSection}
+                      className="text-[#097d76] underline font-black hover:text-purple-600 transition-colors cursor-pointer bg-transparent border-none p-0 inline"
+                    >
+                      here
+                    </button>.
+                  </p>
+                </div>
+
               </div>
 
-              {/* RIGHT: ENLARGED BRAND ART CONTAINER (55% WIDTH & EXPANDED HEIGHT) */}
-              <div className="w-full lg:w-[55%] hidden lg:flex items-center justify-center p-2 bg-transparent overflow-hidden self-stretch min-h-[380px]">
+              {/* RIGHT: HERO ART GROUNDED AT BOTTOM WITH INCREASED HEIGHT */}
+              <div className="w-full lg:w-[50%] hidden lg:flex items-end justify-center bg-transparent overflow-hidden self-end mb-[-2px]">
                 <img 
                   src={serviceHeroImg} 
                   alt="Support network community graphic illustration" 
-                  className="w-full h-auto object-contain max-h-[560px] lg:max-h-[580px] drop-shadow-sm" 
+                  className="w-full h-auto object-contain max-h-[580px] lg:max-h-[640px] transform scale-105 origin-bottom" 
                 />
               </div>
 
@@ -531,9 +545,9 @@ export default function AppV2() {
         </div>
 
         {/* ============================================================ */}
-        {/* 🎯 LOWER SECTION (WORKSPACE FEED PANEL + HELPLINES)          */}
+        {/* 🎯 LOWER SECTION (FEED PANEL + HIDDEN COMPILED HELPLINES)     */}
         {/* ============================================================ */}
-        <div className="w-full px-4 sm:px-8 mt-8 space-y-8">
+        <div className="w-full px-4 sm:px-8 mt-6 space-y-8">
           
           {selectedService && ageGroup && locationInput && (
             <div 
@@ -766,7 +780,7 @@ export default function AppV2() {
                           <p className="text-xs sm:text-sm text-slate-500 leading-relaxed mt-1 font-medium">{fac?.desc || ''}</p>
                         </div>
                         <div className="flex items-center justify-between pt-2.5 border-t border-gray-50">
-                          <span className="text-[9px] sm:text-xs bg-[#FDFAF9] border border-purple-100 text-[#034B41] font-extrabold px-2 py-0.5 rounded tracking-normal">
+                          <span className="text-[9px] sm:text-xs bg-[#FDFAF9] border border-purple-100 pb-400 text-[#034B41] font-extrabold px-2 py-0.5 rounded tracking-normal">
                             {fac?.deliveryType === 'mail' ? (isPhysicalItemTrack ? 'Online / Mail' : 'Online / Chat') : fac?.deliveryType === 'in-person' ? 'Clinic site' : 'Reference link'}
                           </span>
                           <a 
@@ -790,23 +804,20 @@ export default function AppV2() {
           )}
 
           {/* ============================================================ */}
-          {/* 🆘 24/7 EMERGENCY CRISIS HELPLINES TRACK                      */}
+          {/* 🆘 24/7 COMPILED CRISIS HELPLINES (HIDDEN OFF-SCREEN)         */}
           {/* ============================================================ */}
-          <div id="next-steps" className="w-full pt-8 py-6 my-4 border-t border-gray-200 flex flex-col gap-6">
+          <div ref={crisisRef} id="next-steps" className="w-full pt-8 py-6 my-2 flex flex-col gap-6">
             
             <div className="w-full max-w-none">
               <h3 className="font-extrabold text-base sm:text-lg text-[#034B41] flex items-center gap-2 sm:whitespace-nowrap">
                 <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                In case of crisis:
+                24/7 Immediate Crisis Helplines:
               </h3>
-              <p className="text-sm sm:text-base text-[#6C768E] font-semibold leading-normal mt-1 w-full">
-                If you are in an urgent crisis, we have compiled a list of immediate, confidential helplines that do not require parental permission.
-              </p>
             </div>
             
             <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {CONDENSED_HELPLINES.map((line, lIdx) => (
-                <div key={lIdx} id={lIdx === 0 ? "docs" : undefined} className="p-5 bg-white border border-purple-50 rounded-2xl flex flex-col justify-between gap-4 shadow-sm hover:border-purple-200 transition-colors">
+                <div key={lIdx} id={lIdx === 0 ? "docs" : undefined} className="p-5 bg-white border  border-purple-50 rounded-2xl flex flex-col justify-between gap-4 shadow-sm hover:border-purple-200 transition-colors">
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between gap-1.5 flex-wrap">
                       <span className="text-[9px] sm:text-xs bg-teal-50 border border-teal-100 text-[#034B41] font-extrabold px-2.5 py-1 rounded-md tracking-normal">{line.group}</span>
@@ -823,9 +834,9 @@ export default function AppV2() {
 
             <div className="w-full bg-[#F4FFFB] border border-teal-100 p-5 rounded-xl text-center shadow-sm max-w-3xl mx-auto mt-2 animate-fade-in text-xs sm:text-sm">
               <p className="font-bold text-[#3A4A60] leading-relaxed">
-                Looking for support with a different situation? We have plenty of other youth-friendly resources ready for you. Explore all of your options right {' '}
+                Need more helplines? Click {' '}
                 <a 
-                  href="https://www.askingforafriend.org/faq?id=2a3b12a1-ecde-4b1e-b25b-7b46528d3196&search=?" 
+                  href="https://www.askingforafriend.org/faq?id=2a3b12a1-ecde-4b1e-b25b-7b46528d3196&search=" 
                   target="_blank" 
                   rel="noopener noreferrer" 
                   className="text-[#097d76] underline font-black hover:text-purple-600 transition-colors"
