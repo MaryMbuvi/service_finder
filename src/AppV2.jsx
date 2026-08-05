@@ -779,17 +779,17 @@ export default function AppV2() {
                           <h4 className="font-black text-xs sm:text-sm text-[#034B41] tracking-tight">{fac?.name || 'Care Pipeline'}</h4>
                           <p className="text-xs sm:text-sm text-slate-500 leading-relaxed mt-1 font-medium">{fac?.desc || ''}</p>
                         </div>
-                        <div className="flex items-center justify-between pt-2.5 border-t border-gray-50">
-                          <span className="text-[9px] sm:text-xs bg-[#FDFAF9] border border-purple-100 pb-400 text-[#034B41] font-extrabold px-2 py-0.5 rounded tracking-normal">
-                            {fac?.deliveryType === 'mail' ? (isPhysicalItemTrack ? 'Online / Mail' : 'Online / Chat') : fac?.deliveryType === 'in-person' ? 'Clinic site' : 'Reference link'}
-                          </span>
-                          <a 
-                            href={fac?.link || '#'} target="_blank" rel="noopener noreferrer" 
-                            className="bg-[#E0D6FA] hover:bg-[#CEC1F0] text-[#034B41] text-xs sm:text-sm font-black py-2.5 px-6 rounded-xl transition-all"
-                          >
-                            Access Resource ➔
-                          </a>
-                        </div>
+                       <div className="flex items-center justify-between pt-2.5 border-t border-gray-50">
+  <span className="inline-flex items-center w-auto h-fit text-[10px] sm:text-xs bg-[#FDFAF9] border border-purple-100 text-[#034B41] font-extrabold px-2 py-0.5 rounded tracking-normal">
+    {fac?.deliveryType === 'mail' ? (isPhysicalItemTrack ? 'Online / Mail' : 'Online / Chat') : fac?.deliveryType === 'in-person' ? 'Clinic site' : 'Reference link'}
+  </span>
+  <a 
+    href={fac?.link || '#'} target="_blank" rel="noopener noreferrer" 
+    className="bg-[#E0D6FA] hover:bg-[#CEC1F0] text-[#034B41] text-xs sm:text-sm font-black py-2.5 px-6 rounded-xl transition-all"
+  >
+    Access Resource ➔
+  </a>
+</div>
                       </div>
                     ))
                   ) : (
